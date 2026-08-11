@@ -7,7 +7,7 @@ import {
   toNumber,
   type AdminProviderListItem,
 } from '@/lib/api';
-import { Badge, Button, Empty, ErrorNote, Pagination, Table, rupees } from '@/components/ui';
+import { Badge, Button, Empty, ErrorNote, inputClass, PageHeader, Pagination, rupees, Table } from '@/components/ui';
 
 export default function ProvidersPage() {
   const [providers, setProviders] = useState<AdminProviderListItem[]>([]);
@@ -70,28 +70,31 @@ export default function ProvidersPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Providers</h1>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            load(1);
-          }}
-          className="flex gap-2">
-          <input
-            placeholder="Search name, email or phone"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-64 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-          />
-          <Button type="submit" variant="secondary">
-            Search
-          </Button>
-        </form>
-      </div>
+      <PageHeader
+        title="Providers"
+        subtitle="Service providers and their verification status."
+        actions={
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              load(1);
+            }}
+            className="flex gap-2">
+            <input
+              placeholder="Search name, email or phone"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className={`w-64 ${inputClass}`}
+            />
+            <Button type="submit" variant="secondary">
+              Search
+            </Button>
+          </form>
+        }
+      />
 
       <ErrorNote message={error} />
-      {loading && <p className="text-sm text-neutral-400">Loading…</p>}
+      {loading && <p className="text-sm text-fg-subtle">Loading…</p>}
       {!loading && providers.length === 0 && <Empty message="No providers found." />}
 
       {providers.length > 0 && (
@@ -100,25 +103,25 @@ export default function ProvidersPage() {
             <tr key={provider.id}>
               <td className="px-4 py-3">
                 <p className="font-medium">{provider.fullName}</p>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-fg-muted">
                   {provider.providerProfile?.hourlyRate
                     ? `${rupees(toNumber(provider.providerProfile.hourlyRate))}/hr`
                     : 'No rate set'}
                 </p>
               </td>
-              <td className="px-4 py-3 text-sm text-neutral-600">
+              <td className="px-4 py-3 text-sm text-fg-muted">
                 {provider.email}
-                <span className="block text-xs text-neutral-500">{provider.phone}</span>
+                <span className="block text-xs text-fg-muted">{provider.phone}</span>
               </td>
               <td className="px-4 py-3">
                 <Badge status={provider.verificationStatus} />
               </td>
-              <td className="px-4 py-3 text-sm tabular-nums text-neutral-600">
+              <td className="px-4 py-3 text-sm tabular-nums text-fg-muted">
                 {provider.ratingSummary
                   ? `${toNumber(provider.ratingSummary.averageRating).toFixed(1)} ★ (${provider.ratingSummary.totalReviews})`
                   : '—'}
               </td>
-              <td className="px-4 py-3 text-sm tabular-nums text-neutral-600">
+              <td className="px-4 py-3 text-sm tabular-nums text-fg-muted">
                 {provider.wallet ? rupees(toNumber(provider.wallet.balance)) : '—'}
               </td>
               <td className="px-4 py-3">

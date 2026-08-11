@@ -9,7 +9,7 @@ import {
   type TopUpRequest,
   type WithdrawalRequest,
 } from '@/lib/api';
-import { Badge, Button, Empty, ErrorNote, Table, rupees } from '@/components/ui';
+import { Badge, Button, Empty, ErrorNote, PageHeader, rupees, SectionLabel, Table } from '@/components/ui';
 
 type TopUpRow = TopUpRequest & {
   user: { id: string; fullName: string; email: string; phone: string };
@@ -56,14 +56,14 @@ export default function WalletPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">Wallet</h1>
+      <PageHeader title="Wallet" subtitle="Top-up and withdrawal requests awaiting action." />
       <ErrorNote message={error} />
-      {loading && <p className="text-sm text-neutral-400">Loading…</p>}
+      {loading && <p className="text-sm text-fg-subtle">Loading…</p>}
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">
+        <SectionLabel>
           Pending top-ups ({topUps.length})
-        </h2>
+        </SectionLabel>
         {topUps.length === 0 && !loading ? (
           <Empty message="No top-up requests waiting." />
         ) : (
@@ -72,13 +72,13 @@ export default function WalletPage() {
               <tr key={topUp.id}>
                 <td className="px-4 py-3">
                   <p className="font-medium">{topUp.user?.fullName}</p>
-                  <p className="text-xs text-neutral-500">{topUp.user?.phone}</p>
+                  <p className="text-xs text-fg-muted">{topUp.user?.phone}</p>
                 </td>
                 <td className="px-4 py-3 font-medium tabular-nums">
                   {rupees(toNumber(topUp.amount))}
                 </td>
-                <td className="px-4 py-3 text-neutral-600">{topUp.paymentMethod}</td>
-                <td className="px-4 py-3 font-mono text-xs text-neutral-500">
+                <td className="px-4 py-3 text-fg-muted">{topUp.paymentMethod}</td>
+                <td className="px-4 py-3 font-mono text-xs text-fg-muted">
                   {topUp.transactionReference ?? '—'}
                 </td>
                 <td className="px-4 py-3">
@@ -87,11 +87,11 @@ export default function WalletPage() {
                       href={fileUrl(topUp.proofImage)}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-sm text-orange-600 underline">
+                      className="cursor-pointer text-sm text-brand underline">
                       View
                     </a>
                   ) : (
-                    <span className="text-xs text-neutral-400">None</span>
+                    <span className="text-xs text-fg-subtle">None</span>
                   )}
                 </td>
                 <td className="px-4 py-3">
@@ -131,9 +131,9 @@ export default function WalletPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">
+        <SectionLabel>
           Pending withdrawals ({withdrawals.length})
-        </h2>
+        </SectionLabel>
         {withdrawals.length === 0 && !loading ? (
           <Empty message="No withdrawal requests waiting." />
         ) : (
@@ -142,12 +142,12 @@ export default function WalletPage() {
               <tr key={w.id}>
                 <td className="px-4 py-3">
                   <p className="font-medium">{w.provider?.fullName}</p>
-                  <p className="text-xs text-neutral-500">{w.provider?.phone}</p>
+                  <p className="text-xs text-fg-muted">{w.provider?.phone}</p>
                 </td>
                 <td className="px-4 py-3 font-medium tabular-nums">{rupees(toNumber(w.amount))}</td>
-                <td className="px-4 py-3 text-sm text-neutral-600">
+                <td className="px-4 py-3 text-sm text-fg-muted">
                   {w.accountName ?? '—'}
-                  <span className="block font-mono text-xs text-neutral-500">
+                  <span className="block font-mono text-xs text-fg-muted">
                     {w.accountNumber ?? ''}
                   </span>
                 </td>

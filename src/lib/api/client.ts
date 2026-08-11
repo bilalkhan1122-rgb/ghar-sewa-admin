@@ -103,16 +103,52 @@ function refreshAccessToken(): Promise<boolean> {
   return refreshPromise;
 }
 
+/**
+ * A rejected `fetch` is deliberately opaque: being offline, a dead host, and a
+ * CORS refusal all surface as the same `TypeError`. These three need very
+ * different fixes, so probe once to tell them apart. Only runs on the failure
+ * path, so the extra request costs nothing in the normal case.
+ */
+async function diagnoseFetchFailure(): Promise<{ message: string; code: string }> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return {
+      message: 'You appear to be offline. Check your internet connection and try again.',
+      code: 'OFFLINE',
+    };
+  }
+
+  // `no-cors` skips CORS enforcement entirely. The opaque response it returns is
+  // unreadable, but the fact that it resolved at all proves DNS, TCP and TLS are
+  // fine — which leaves CORS as the reason the real request was blocked.
+  try {
+    await fetch(API_ORIGIN, { mode: 'no-cors', cache: 'no-store' });
+  } catch {
+    return {
+      message:
+        `Could not reach the server at ${API_ORIGIN}. It may be down or still ` +
+        `deploying, the URL in NEXT_PUBLIC_API_URL may be wrong, or a browser ` +
+        `extension may be blocking the request.`,
+      code: 'NETWORK_ERROR',
+    };
+  }
+
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'this page';
+  return {
+    message:
+      `The server at ${API_ORIGIN} is reachable but rejected this request from ` +
+      `${origin}. Its CORS allowlist (CORS_ORIGIN) most likely does not include ` +
+      `${origin} — add it and redeploy the backend.`,
+    code: 'CORS_ERROR',
+  };
+}
+
 async function request<T>(path: string, init: RequestInit = {}, isFormData = false): Promise<T> {
   let res: Response;
   try {
     res = await doFetch(path, init, isFormData);
   } catch {
-    throw new ApiError(
-      `Could not reach the server at ${API_BASE_URL}.`,
-      0,
-      'NETWORK_ERROR',
-    );
+    const { message, code } = await diagnoseFetchFailure();
+    throw new ApiError(message, 0, code);
   }
 
   // Access token expired mid-session — refresh once and replay.

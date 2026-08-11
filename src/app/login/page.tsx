@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ApiError, apiErrorMessage } from '@/lib/api';
 import { NOT_AN_ADMIN_MESSAGE, useAuth } from '@/lib/auth';
-import { Button, ErrorNote } from '@/components/ui';
+import { Button, ErrorNote, inputClass } from '@/components/ui';
 
 export default function LoginPage() {
   const { login, status } = useAuth();
@@ -48,33 +48,33 @@ export default function LoginPage() {
     <main className="flex flex-1 items-center justify-center p-6">
       <form
         onSubmit={submit}
-        className="w-full max-w-sm space-y-4 rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
+        className="w-full max-w-sm space-y-4 rounded-2xl border border-line bg-surface p-8 shadow-sm">
         <div>
           <h1 className="text-xl font-semibold">Ghar Sewa Admin</h1>
-          <p className="mt-1 text-sm text-neutral-500">Sign in to the operations dashboard.</p>
+          <p className="mt-1 text-sm text-fg-muted">Sign in to the operations dashboard.</p>
         </div>
 
         <ErrorNote message={error} />
 
         <label className="block space-y-1">
-          <span className="text-sm font-medium text-neutral-700">Email</span>
+          <span className="text-sm font-medium text-fg">Email</span>
           <input
             type="email"
             autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+            className={`w-full ${inputClass}`}
           />
         </label>
 
         <label className="block space-y-1">
-          <span className="text-sm font-medium text-neutral-700">Password</span>
+          <span className="text-sm font-medium text-fg">Password</span>
           <input
             type="password"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+            className={`w-full ${inputClass}`}
           />
         </label>
 

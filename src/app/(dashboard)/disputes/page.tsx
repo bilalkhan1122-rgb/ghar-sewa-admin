@@ -8,7 +8,7 @@ import {
   type DisputeListItem,
   type DisputeResolution,
 } from '@/lib/api';
-import { Badge, Button, Card, Empty, ErrorNote, Pagination, rupees } from '@/components/ui';
+import { Badge, Button, Card, Empty, ErrorNote, inputClass, PageHeader, Pagination, rupees } from '@/components/ui';
 
 const RESOLUTIONS: { value: DisputeResolution; label: string; needsAmount?: boolean }[] = [
   { value: 'FULL_REFUND', label: 'Full refund' },
@@ -72,14 +72,15 @@ export default function DisputesPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Disputes</h1>
-        <span className="text-sm text-neutral-500">{disputes.length} open</span>
-      </div>
+      <PageHeader
+        title="Disputes"
+        subtitle="Jobs escalated by a customer or provider."
+        actions={<span className="text-sm text-fg-muted">{disputes.length} open</span>}
+      />
 
       <ErrorNote message={error} />
 
-      {loading && <p className="text-sm text-neutral-400">Loading…</p>}
+      {loading && <p className="text-sm text-fg-subtle">Loading…</p>}
       {!loading && disputes.length === 0 && <Empty message="No open disputes." />}
 
       <div className="space-y-4">
@@ -88,12 +89,12 @@ export default function DisputesPage() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="font-semibold">{dispute.job?.title ?? 'Job'}</p>
-                <p className="text-sm text-neutral-500">
+                <p className="text-sm text-fg-muted">
                   Raised by {dispute.raisedBy?.fullName} ({dispute.raisedBy?.role?.toLowerCase()})
                   {' · against '}
                   {dispute.opponent?.fullName}
                 </p>
-                <p className="mt-1 text-sm text-neutral-500">
+                <p className="mt-1 text-sm text-fg-muted">
                   Booking value {rupees(toNumber(dispute.booking?.totalAmount))} ·{' '}
                   {new Date(dispute.createdAt).toLocaleString()}
                 </p>
@@ -101,10 +102,10 @@ export default function DisputesPage() {
               <Badge status={dispute.status} />
             </div>
 
-            <div className="mt-3 rounded-lg bg-neutral-50 p-3 text-sm">
-              <p className="font-medium text-neutral-700">{dispute.reason}</p>
+            <div className="mt-3 rounded-lg bg-surface-muted p-3 text-sm">
+              <p className="font-medium text-fg">{dispute.reason}</p>
               {dispute.description && (
-                <p className="mt-1 text-neutral-600">{dispute.description}</p>
+                <p className="mt-1 text-fg-muted">{dispute.description}</p>
               )}
             </div>
 
@@ -114,7 +115,7 @@ export default function DisputesPage() {
                 placeholder="Refund amount (partial only)"
                 value={amounts[dispute.id] ?? ''}
                 onChange={(e) => setAmounts((a) => ({ ...a, [dispute.id]: e.target.value }))}
-                className="w-56 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                className={`w-56 ${inputClass}`}
               />
               {RESOLUTIONS.map((option) => (
                 <Button

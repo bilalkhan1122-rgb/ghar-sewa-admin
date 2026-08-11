@@ -1,26 +1,146 @@
 @import "tailwindcss";
 
+/**
+ * One bright palette. Light only — on purpose.
+ *
+ * There is deliberately no `prefers-color-scheme: dark` block: the dashboard is
+ * meant to read bright regardless of the viewer's OS setting, and `color-scheme:
+ * light` below keeps native controls (inputs, scrollbars, date pickers) light too.
+ * Adding a dark block would silently reintroduce OS-driven theming.
+ *
+ * Every colour in the app comes from a token here — no component hardcodes a
+ * Tailwind palette shade. Add colours here, then use the generated utility.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* Surfaces, furthest back to closest */
+  --page: #f4f6fa;
+  --surface: #ffffff;
+  --surface-muted: #f7f9fc;
+
+  /* Sidebar sits on white, separated by a soft line rather than a hard border */
+  --sidebar: #ffffff;
+  --sidebar-line: #eaeff6;
+
+  /* Borders — `line` for dividers, `line-strong` for inputs and hover states */
+  --line: #e7ecf3;
+  --line-strong: #d3dbe6;
+
+  /* Text, descending emphasis */
+  --fg: #111827;
+  --fg-muted: #667085;
+  --fg-subtle: #98a2b3;
+
+  /* Brand */
+  --brand: #ea580c;
+  --brand-hover: #c2410c;
+  --brand-fg: #ffffff;
+
+  /* Status: `-soft`/`-line` are the chip fill and ring, `-fg` the label.
+     `-solid` pairs with white text for filled buttons. */
+  --warn-soft: #fff8eb;
+  --warn-line: #fde3ad;
+  --warn-fg: #b54708;
+
+  --ok-soft: #ecfdf3;
+  --ok-line: #abefc6;
+  --ok-fg: #067647;
+  --ok-solid: #079455;
+  --ok-solid-hover: #067647;
+
+  --bad-soft: #fef3f2;
+  --bad-line: #fecdca;
+  --bad-fg: #b42318;
+  --bad-solid: #d92d20;
+  --bad-solid-hover: #b42318;
+
+  /* Chart marks. Validated as a categorical set (CVD separation + normal-vision
+     floor) — do not substitute the UI status colours here: --warn-fg sits too
+     close to --bad-fg to tell apart as adjacent marks. */
+  --chart-primary: #ea580c;
+  --chart-ok: #067647;
+  --chart-warn: #ca8504;
+  --chart-bad: #b42318;
+  --chart-info: #175cd3;
+  --chart-track: #eef1f6;
+
+  --info-soft: #eff8ff;
+  --info-line: #b2ddff;
+  --info-fg: #175cd3;
 }
 
+/* Exposes each token as a utility: `bg-surface`, `text-fg-muted`, `ring-warn-line`, … */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-line: var(--sidebar-line);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-fg: var(--brand-fg);
+
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-line: var(--warn-line);
+  --color-warn-fg: var(--warn-fg);
+
+  --color-ok-soft: var(--ok-soft);
+  --color-ok-line: var(--ok-line);
+  --color-ok-fg: var(--ok-fg);
+  --color-ok-solid: var(--ok-solid);
+  --color-ok-solid-hover: var(--ok-solid-hover);
+
+  --color-bad-soft: var(--bad-soft);
+  --color-bad-line: var(--bad-line);
+  --color-bad-fg: var(--bad-fg);
+  --color-bad-solid: var(--bad-solid);
+  --color-bad-solid-hover: var(--bad-solid-hover);
+
+  --color-chart-primary: var(--chart-primary);
+  --color-chart-ok: var(--chart-ok);
+  --color-chart-warn: var(--chart-warn);
+  --color-chart-bad: var(--chart-bad);
+  --color-chart-info: var(--chart-info);
+  --color-chart-track: var(--chart-track);
+
+  --color-info-soft: var(--info-soft);
+  --color-info-line: var(--info-line);
+  --color-info-fg: var(--info-fg);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Soft card lift — two tight shadows read cleaner than one big blur. */
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Inside `@layer base` on purpose: unlayered rules outrank every Tailwind
+   utility, so a bare `body { background }` here would silently beat any
+   `bg-*` class put on the element. */
+@layer base {
+  /* Chrome paints autofilled fields with its own blue-grey and ignores
+     background-color outright; the inset shadow is the only way to reclaim them. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--fg);
+    -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+    caret-color: var(--fg);
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    background-color: var(--page);
+    color: var(--fg);
+    font-family: var(--font-sans), system-ui, sans-serif;
+  }
 }

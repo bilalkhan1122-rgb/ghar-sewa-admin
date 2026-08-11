@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { adminApi, apiErrorMessage, toNumber, type DashboardSummary } from '@/lib/api';
-import { Card, ErrorNote, StatCard, rupees } from '@/components/ui';
+import { Card, ErrorNote, PageHeader, SectionLabel, StatCard, rupees } from '@/components/ui';
+
+const today = new Date().toLocaleDateString('en-GB', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
 
 export default function OverviewPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -17,10 +24,10 @@ export default function OverviewPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">Overview</h1>
+      <PageHeader title="Overview" subtitle={today} />
       <ErrorNote message={error} />
 
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           label="Pending verifications"
           value={summary?.providers.pendingVerifications ?? 0}
@@ -51,10 +58,10 @@ export default function OverviewPage() {
         />
       </section>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <Card>
-          <h2 className="text-sm font-semibold text-neutral-500">Jobs</h2>
-          <dl className="mt-3 space-y-2 text-sm">
+          <SectionLabel>Jobs</SectionLabel>
+          <dl className="mt-3 space-y-2.5 text-sm">
             <Row label="Pending" value={summary?.jobs.pending ?? 0} />
             <Row label="Active" value={summary?.jobs.active ?? 0} />
             <Row label="Completed" value={summary?.jobs.completed ?? 0} />
@@ -65,8 +72,8 @@ export default function OverviewPage() {
         </Card>
 
         <Card>
-          <h2 className="text-sm font-semibold text-neutral-500">Users</h2>
-          <dl className="mt-3 space-y-2 text-sm">
+          <SectionLabel>Users</SectionLabel>
+          <dl className="mt-3 space-y-2.5 text-sm">
             <Row label="Customers" value={summary?.users.totalCustomers ?? 0} />
             <Row label="Providers" value={summary?.users.totalProviders ?? 0} />
             <Row label="New today" value={summary?.users.newUsersToday ?? 0} />
@@ -77,8 +84,8 @@ export default function OverviewPage() {
         </Card>
 
         <Card>
-          <h2 className="text-sm font-semibold text-neutral-500">Finance</h2>
-          <dl className="mt-3 space-y-2 text-sm">
+          <SectionLabel>Finance</SectionLabel>
+          <dl className="mt-3 space-y-2.5 text-sm">
             <Row label="Revenue today" value={rupees(toNumber(summary?.finance.todayRevenue))} />
             <Row
               label="Total commission"
@@ -103,8 +110,8 @@ export default function OverviewPage() {
 function Row({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <dt className="text-neutral-500">{label}</dt>
-      <dd className="font-medium tabular-nums">{value}</dd>
+      <dt className="text-fg-muted">{label}</dt>
+      <dd className="font-medium tabular-nums text-fg">{value}</dd>
     </div>
   );
 }

@@ -57,9 +57,13 @@ export const verificationApi = {
     api.get<Paginated<VerificationRequest>>(`/verification/history${qs({ page, limit, status })}`),
 
   // admin
-  adminList: (page = 1, limit = 10, status?: VerificationStatus) =>
+  /**
+   * `providerId` narrows to one provider's submissions at any status — the only
+   * way to review documents once a request has left the pending queue.
+   */
+  adminList: (page = 1, limit = 10, status?: VerificationStatus, providerId?: string) =>
     api.get<Paginated<VerificationRequestWithProvider>>(
-      `/admin/verification/requests${qs({ page, limit, status })}`,
+      `/admin/verification/requests${qs({ page, limit, status, providerId })}`,
     ),
   adminGetById: (id: string) =>
     api.get<VerificationRequestWithProvider>(`/admin/verification/requests/${id}`),

@@ -2,9 +2,112 @@
 
 import type { ReactNode } from 'react';
 
+/** Shared control styling — every text field and select in the app uses these. */
+export const inputClass =
+  'rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-fg outline-none placeholder:text-fg-subtle focus:border-brand focus:ring-1 focus:ring-brand';
+
+export const selectClass =
+  'cursor-pointer rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-brand focus:ring-1 focus:ring-brand';
+
+/** Underlined tab strip. `value`/`onChange` keep the active tab in the caller. */
+export function Tabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+}: {
+  tabs: { value: T; label: string; count?: number }[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="-mb-px flex gap-1 overflow-x-auto border-b border-line">
+      {tabs.map((tab) => {
+        const active = tab.value === value;
+        return (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => onChange(tab.value)}
+            className={`flex cursor-pointer items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition ${
+              active
+                ? 'border-brand text-fg'
+                : 'border-transparent text-fg-muted hover:border-line-strong hover:text-fg'
+            }`}>
+            {tab.label}
+            {tab.count !== undefined && tab.count > 0 && (
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${
+                  active ? 'bg-warn-soft text-warn-fg' : 'bg-surface-muted text-fg-muted'
+                }`}>
+                {tab.count}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Labelled control for filter bars — keeps label/field spacing consistent. */
+export function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-fg-subtle">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+/** Filter bar shell: wraps controls in a card that sits above a table. */
+export function FilterBar({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-surface p-4 shadow-card">
+      {children}
+    </div>
+  );
+}
+
+/** Key/value line used inside detail cards. */
+export function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-2">
+      <dt className="shrink-0 text-sm text-fg-muted">{label}</dt>
+      <dd className="text-right text-sm font-medium text-fg">{value ?? '—'}</dd>
+    </div>
+  );
+}
+
+export function PageHeader({
+  title,
+  subtitle,
+  actions,
+}: {
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-4">
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        {subtitle && <p className="mt-0.5 text-sm text-fg-muted">{subtitle}</p>}
+      </div>
+      {actions && <div className="flex items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/** Small uppercase label that opens a group of rows inside a Card. */
+export function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <h2 className="text-[11px] font-semibold uppercase tracking-wider text-fg-subtle">{children}</h2>
+  );
+}
+
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-neutral-200 bg-white p-5 shadow-sm ${className}`}>
+    <div className={`rounded-2xl border border-line bg-surface p-5 shadow-card ${className}`}>
       {children}
     </div>
   );
@@ -23,18 +126,21 @@ export function StatCard({
   tone?: 'default' | 'warning' | 'danger' | 'success';
   href?: string;
 }) {
-  const toneClass = {
-    default: 'text-neutral-900',
-    warning: 'text-amber-600',
-    danger: 'text-red-600',
-    success: 'text-emerald-600',
+  const dot = {
+    default: 'bg-fg-subtle',
+    warning: 'bg-warn-fg',
+    danger: 'bg-bad-fg',
+    success: 'bg-ok-fg',
   }[tone];
 
   const body = (
     <>
-      <p className="text-sm text-neutral-500">{label}</p>
-      <p className={`mt-1 text-3xl font-semibold tabular-nums ${toneClass}`}>{value}</p>
-      {caption && <p className="mt-1 text-xs text-neutral-400">{caption}</p>}
+      <div className="flex items-center gap-2">
+        <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-fg-subtle">{label}</p>
+      </div>
+      <p className="mt-2.5 text-[28px] font-semibold leading-none tabular-nums">{value}</p>
+      {caption && <p className="mt-2 text-xs text-fg-subtle">{caption}</p>}
     </>
   );
 
@@ -42,32 +148,32 @@ export function StatCard({
     return (
       <a
         href={href}
-        className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:border-neutral-300 hover:shadow">
+        className="group cursor-pointer rounded-2xl border border-line bg-surface p-4 shadow-card transition hover:border-line-strong hover:shadow-md">
         {body}
       </a>
     );
   }
-  return <Card>{body}</Card>;
+  return <div className="rounded-2xl border border-line bg-surface p-4 shadow-card">{body}</div>;
 }
 
 const BADGE_TONES: Record<string, string> = {
-  PENDING: 'bg-amber-50 text-amber-700 ring-amber-200',
-  OPEN: 'bg-amber-50 text-amber-700 ring-amber-200',
-  UNDER_REVIEW: 'bg-blue-50 text-blue-700 ring-blue-200',
-  WAITING_FOR_RESPONSE: 'bg-blue-50 text-blue-700 ring-blue-200',
-  APPROVED: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  RESOLVED: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  COMPLETED: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  ACTIVE: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  REJECTED: 'bg-red-50 text-red-700 ring-red-200',
-  BANNED: 'bg-red-50 text-red-700 ring-red-200',
-  SUSPENDED: 'bg-red-50 text-red-700 ring-red-200',
+  PENDING: 'bg-warn-soft text-warn-fg ring-warn-line',
+  OPEN: 'bg-warn-soft text-warn-fg ring-warn-line',
+  UNDER_REVIEW: 'bg-info-soft text-info-fg ring-info-line',
+  WAITING_FOR_RESPONSE: 'bg-info-soft text-info-fg ring-info-line',
+  APPROVED: 'bg-ok-soft text-ok-fg ring-ok-line',
+  RESOLVED: 'bg-ok-soft text-ok-fg ring-ok-line',
+  COMPLETED: 'bg-ok-soft text-ok-fg ring-ok-line',
+  ACTIVE: 'bg-ok-soft text-ok-fg ring-ok-line',
+  REJECTED: 'bg-bad-soft text-bad-fg ring-bad-line',
+  BANNED: 'bg-bad-soft text-bad-fg ring-bad-line',
+  SUSPENDED: 'bg-bad-soft text-bad-fg ring-bad-line',
 };
 
 export function Badge({ status }: { status: string }) {
-  const tone = BADGE_TONES[status] ?? 'bg-neutral-100 text-neutral-600 ring-neutral-200';
+  const tone = BADGE_TONES[status] ?? 'bg-surface-muted text-fg-muted ring-line';
   return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${tone}`}>
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${tone}`}>
       {status.replace(/_/g, ' ').toLowerCase()}
     </span>
   );
@@ -89,10 +195,12 @@ export function Button({
   className?: string;
 }) {
   const variants = {
-    primary: 'bg-orange-600 text-white hover:bg-orange-700',
-    secondary: 'bg-white text-neutral-700 ring-1 ring-neutral-300 hover:bg-neutral-50',
-    danger: 'bg-red-600 text-white hover:bg-red-700',
-    success: 'bg-emerald-600 text-white hover:bg-emerald-700',
+    primary: 'bg-brand text-brand-fg hover:bg-brand-hover',
+    secondary: 'bg-surface text-fg ring-1 ring-line-strong hover:bg-surface-muted',
+    // Row actions repeat once per record, so these stay quiet until hovered —
+    // a table of solid red buttons reads as an alarm, not a list.
+    danger: 'bg-bad-soft text-bad-fg ring-1 ring-bad-line hover:bg-bad-solid hover:text-white',
+    success: 'bg-ok-soft text-ok-fg ring-1 ring-ok-line hover:bg-ok-solid hover:text-white',
   }[variant];
 
   return (
@@ -100,7 +208,7 @@ export function Button({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${variants} ${className}`}>
+      className={`cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${variants} ${className}`}>
       {children}
     </button>
   );
@@ -109,9 +217,9 @@ export function Button({
 /** Horizontally scrollable table shell — wide admin tables must never scroll the page. */
 export function Table({ head, children }: { head: string[]; children: ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white">
+    <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-card">
       <table className="w-full min-w-[640px] text-left text-sm">
-        <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+        <thead className="border-b border-line bg-surface-muted text-xs font-medium uppercase tracking-wide text-fg-muted">
           <tr>
             {head.map((h) => (
               <th key={h} className="px-4 py-3 font-medium">
@@ -120,20 +228,20 @@ export function Table({ head, children }: { head: string[]; children: ReactNode 
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-neutral-100">{children}</tbody>
+        <tbody className="divide-y divide-line">{children}</tbody>
       </table>
     </div>
   );
 }
 
 export function Empty({ message }: { message: string }) {
-  return <p className="px-4 py-10 text-center text-sm text-neutral-400">{message}</p>;
+  return <p className="px-4 py-10 text-center text-sm text-fg-subtle">{message}</p>;
 }
 
 export function ErrorNote({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200">
+    <p className="rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad-fg ring-1 ring-bad-line">
       {message}
     </p>
   );
@@ -150,7 +258,7 @@ export function Pagination({
 }) {
   if (totalPages <= 1) return null;
   return (
-    <div className="flex items-center justify-between px-1 text-sm text-neutral-500">
+    <div className="flex items-center justify-between px-1 text-sm text-fg-muted">
       <Button variant="secondary" disabled={page <= 1} onClick={() => onChange(page - 1)}>
         Previous
       </Button>

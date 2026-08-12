@@ -33,6 +33,7 @@ const NAV: NavItem[] = [
     count: (w) => w.pendingTopUps + w.pendingWithdrawals,
   },
   { href: '/reports', label: 'Reports' },
+  { href: '/analytics', label: 'Analytics' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

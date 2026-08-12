@@ -29,7 +29,6 @@ export default function DisputesPage() {
   const [amounts, setAmounts] = useState<Record<string, string>>({});
 
   const load = useCallback((nextPage: number) => {
-    setLoading(true);
     disputesApi.admin
       .list({ page: nextPage, limit: 10, status: 'OPEN' })
       .then((res) => {

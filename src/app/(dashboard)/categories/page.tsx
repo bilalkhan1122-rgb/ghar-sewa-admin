@@ -25,7 +25,6 @@ export default function CategoriesPage() {
   const [editing, setEditing] = useState<ServiceCategory | null>(null);
 
   const load = useCallback(() => {
-    setLoading(true);
     categoriesApi
       .list({ limit: 100, search: search || undefined })
       .then((res) => setCategories(res.data))

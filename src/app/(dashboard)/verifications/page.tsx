@@ -19,7 +19,6 @@ export default function VerificationsPage() {
   const [reasons, setReasons] = useState<Record<string, string>>({});
 
   const load = useCallback((nextPage: number) => {
-    setLoading(true);
     verificationApi
       .adminList(nextPage, 10, 'PENDING')
       .then((res) => {

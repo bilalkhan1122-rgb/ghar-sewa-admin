@@ -15,6 +15,7 @@ export * from './categories';
 export * from './admin-users';
 export * from './jobs';
 export * from './reports';
+export * from './analytics';
 export * from './verification';
 export * from './disputes';
 export * from './wallet';

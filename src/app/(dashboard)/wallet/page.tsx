@@ -26,7 +26,6 @@ export default function WalletPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    setLoading(true);
     Promise.all([
       walletApi.admin.topUps(1, 20, 'PENDING').then((r) => setTopUps(r.data as TopUpRow[])),
       walletApi.admin

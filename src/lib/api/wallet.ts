@@ -127,19 +127,6 @@ export type TxQuery = {
   dateTo?: string;
 };
 
-function txScoped(base: '/wallet' | '/provider/wallet') {
-  return {
-    get: () =>
-      api.get<{ walletId: string; type: WalletType; status: WalletStatus; balance: string; heldBalance: string }>(
-        base,
-      ),
-    summary: () => api.get<WalletSummary>(`${base}/summary`),
-    transactions: (query?: TxQuery) =>
-      api.get<Paginated<WalletTransaction>>(`${base}/transactions${qs(query ?? {})}`),
-    transaction: (id: string) => api.get<WalletTransaction>(`${base}/transactions/${id}`),
-  };
-}
-
 export const walletApi = {
   admin: {
     wallets: (page = 1, limit = 10, type?: WalletType, status?: WalletStatus) =>

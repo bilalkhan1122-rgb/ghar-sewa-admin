@@ -1,83 +1,105 @@
 @import "tailwindcss";
 
 /**
- * One bright palette. Light only — on purpose.
+ * ─────────────────────────────────────────────────────────────────────────────
+ * GHAR SEWA DASHBOARD — DESIGN TOKENS
  *
- * There is deliberately no `prefers-color-scheme: dark` block: the dashboard is
- * meant to read bright regardless of the viewer's OS setting, and `color-scheme:
- * light` below keeps native controls (inputs, scrollbars, date pickers) light too.
- * Adding a dark block would silently reintroduce OS-driven theming.
+ * This is the ONLY file that defines a colour. Every component styles itself
+ * with the utilities generated below (`bg-surface`, `text-fg-muted`,
+ * `bg-header`, …), so re-theming the whole dashboard means editing the values
+ * in this block and nothing else.
  *
- * Every colour in the app comes from a token here — no component hardcodes a
- * Tailwind palette shade. Add colours here, then use the generated utility.
+ * Values are taken from the Figma file "dashboard-ghar-sewa".
+ * Light only, on purpose — there is no `prefers-color-scheme` block, so the
+ * dashboard reads the same regardless of the viewer's OS setting.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 :root {
   color-scheme: light;
 
-  /* Surfaces, furthest back to closest */
+  /* ── Dark header panel ─────────────────────────────────────────────────── */
+  --header: #0b0f19;
+  --header-card: #131b2e;
+  --header-line: #1e2637;
+  --header-nav-active: #1f232c;
+  --fg-on-dark: #ffffff;
+  --fg-on-dark-muted: #8a94a6;
+
+  /* ── Light body ────────────────────────────────────────────────────────── */
   --page: #f4f6fa;
   --surface: #ffffff;
-  --surface-muted: #f7f9fc;
+  --surface-muted: #f8fafc;
 
-  /* Sidebar sits on white, separated by a soft line rather than a hard border */
-  --sidebar: #ffffff;
-  --sidebar-line: #eaeff6;
+  --line: #e8ecf3;
+  --line-strong: #d5dbe5;
 
-  /* Borders — `line` for dividers, `line-strong` for inputs and hover states */
-  --line: #e7ecf3;
-  --line-strong: #d3dbe6;
+  --fg: #0f172a;
+  --fg-muted: #64748b;
+  --fg-subtle: #94a3b8;
 
-  /* Text, descending emphasis */
-  --fg: #111827;
-  --fg-muted: #667085;
-  --fg-subtle: #98a2b3;
-
-  /* Brand */
-  --brand: #ea580c;
-  --brand-hover: #c2410c;
+  /* ── Brand ─────────────────────────────────────────────────────────────── */
+  --brand: #2563eb;
+  --brand-hover: #1d4ed8;
   --brand-fg: #ffffff;
+  --brand-soft: #eff6ff;
 
-  /* Status: `-soft`/`-line` are the chip fill and ring, `-fg` the label.
-     `-solid` pairs with white text for filled buttons. */
-  --warn-soft: #fff8eb;
-  --warn-line: #fde3ad;
-  --warn-fg: #b54708;
+  /* ── Status: `-soft`/`-line` are the pill fill and ring, `-fg` the label.
+        `-solid` pairs with white text for filled buttons. ────────────────── */
+  --ok-soft: #ecfdf5;
+  --ok-line: #a7f3d0;
+  --ok-fg: #047857;
+  --ok-solid: #059669;
+  --ok-solid-hover: #047857;
 
-  --ok-soft: #ecfdf3;
-  --ok-line: #abefc6;
-  --ok-fg: #067647;
-  --ok-solid: #079455;
-  --ok-solid-hover: #067647;
+  --warn-soft: #fffbeb;
+  --warn-line: #fde68a;
+  --warn-fg: #b45309;
 
-  --bad-soft: #fef3f2;
-  --bad-line: #fecdca;
-  --bad-fg: #b42318;
-  --bad-solid: #d92d20;
-  --bad-solid-hover: #b42318;
+  --bad-soft: #fef2f2;
+  --bad-line: #fecaca;
+  --bad-fg: #b91c1c;
+  --bad-solid: #dc2626;
+  --bad-solid-hover: #b91c1c;
 
-  /* Chart marks. Validated as a categorical set (CVD separation + normal-vision
-     floor) — do not substitute the UI status colours here: --warn-fg sits too
-     close to --bad-fg to tell apart as adjacent marks. */
-  --chart-primary: #ea580c;
+  --info-soft: #eff6ff;
+  --info-line: #bfdbfe;
+  --info-fg: #1d4ed8;
+
+  /* ── Metric badges on the dark header (Figma: one hue per metric) ──────── */
+  --badge-violet: #ede9fe;
+  --badge-violet-fg: #7c3aed;
+  --badge-amber: #fef3c7;
+  --badge-amber-fg: #d97706;
+  --badge-green: #d1fae5;
+  --badge-green-fg: #059669;
+  --badge-red: #fee2e2;
+  --badge-red-fg: #dc2626;
+
+  /* ── Charts. Validated as a categorical set (CVD separation + normal-vision
+        floor) — do not swap in the UI status colours, `--warn-fg` sits too
+        close to `--bad-fg` to read as adjacent marks. ───────────────────── */
+  --chart-primary: #3b82f6;
+  --chart-primary-soft: #dbeafe;
   --chart-ok: #067647;
   --chart-warn: #ca8504;
   --chart-bad: #b42318;
   --chart-info: #175cd3;
   --chart-track: #eef1f6;
-
-  --info-soft: #eff8ff;
-  --info-line: #b2ddff;
-  --info-fg: #175cd3;
 }
 
-/* Exposes each token as a utility: `bg-surface`, `text-fg-muted`, `ring-warn-line`, … */
+/* Exposes every token as a utility: `bg-surface`, `text-fg-muted`, `bg-header`,
+   `ring-warn-line`, … Add a token above, add its line here, use it anywhere. */
 @theme inline {
+  --color-header: var(--header);
+  --color-header-card: var(--header-card);
+  --color-header-line: var(--header-line);
+  --color-header-nav-active: var(--header-nav-active);
+  --color-fg-on-dark: var(--fg-on-dark);
+  --color-fg-on-dark-muted: var(--fg-on-dark-muted);
+
   --color-page: var(--page);
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
-
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-line: var(--sidebar-line);
 
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
@@ -89,10 +111,7 @@
   --color-brand: var(--brand);
   --color-brand-hover: var(--brand-hover);
   --color-brand-fg: var(--brand-fg);
-
-  --color-warn-soft: var(--warn-soft);
-  --color-warn-line: var(--warn-line);
-  --color-warn-fg: var(--warn-fg);
+  --color-brand-soft: var(--brand-soft);
 
   --color-ok-soft: var(--ok-soft);
   --color-ok-line: var(--ok-line);
@@ -100,22 +119,36 @@
   --color-ok-solid: var(--ok-solid);
   --color-ok-solid-hover: var(--ok-solid-hover);
 
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-line: var(--warn-line);
+  --color-warn-fg: var(--warn-fg);
+
   --color-bad-soft: var(--bad-soft);
   --color-bad-line: var(--bad-line);
   --color-bad-fg: var(--bad-fg);
   --color-bad-solid: var(--bad-solid);
   --color-bad-solid-hover: var(--bad-solid-hover);
 
+  --color-info-soft: var(--info-soft);
+  --color-info-line: var(--info-line);
+  --color-info-fg: var(--info-fg);
+
+  --color-badge-violet: var(--badge-violet);
+  --color-badge-violet-fg: var(--badge-violet-fg);
+  --color-badge-amber: var(--badge-amber);
+  --color-badge-amber-fg: var(--badge-amber-fg);
+  --color-badge-green: var(--badge-green);
+  --color-badge-green-fg: var(--badge-green-fg);
+  --color-badge-red: var(--badge-red);
+  --color-badge-red-fg: var(--badge-red-fg);
+
   --color-chart-primary: var(--chart-primary);
+  --color-chart-primary-soft: var(--chart-primary-soft);
   --color-chart-ok: var(--chart-ok);
   --color-chart-warn: var(--chart-warn);
   --color-chart-bad: var(--chart-bad);
   --color-chart-info: var(--chart-info);
   --color-chart-track: var(--chart-track);
-
-  --color-info-soft: var(--info-soft);
-  --color-info-line: var(--info-line);
-  --color-info-fg: var(--info-fg);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

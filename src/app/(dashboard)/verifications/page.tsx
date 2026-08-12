@@ -7,7 +7,7 @@ import {
   verificationApi,
   type VerificationRequestWithProvider,
 } from '@/lib/api';
-import { Badge, Button, Card, Empty, ErrorNote, inputClass, PageHeader, Pagination } from '@/components/ui';
+import { Badge, Button, Card, Empty, ErrorNote, inputClass, PageBody, PageHeader, Pagination } from '@/components/ui';
 
 export default function VerificationsPage() {
   const [requests, setRequests] = useState<VerificationRequestWithProvider[]>([]);
@@ -71,9 +71,10 @@ export default function VerificationsPage() {
       <PageHeader
         title="Verifications"
         subtitle="Provider documents awaiting review."
-        actions={<span className="text-sm text-fg-muted">{requests.length} pending</span>}
+        actions={<span className="text-sm text-fg-on-dark-muted">{requests.length} pending</span>}
       />
 
+      <PageBody>
       <ErrorNote message={error} />
 
       {loading && <p className="text-sm text-fg-subtle">Loading…</p>}
@@ -134,6 +135,7 @@ export default function VerificationsPage() {
       </div>
 
       <Pagination page={page} totalPages={totalPages} onChange={load} />
+      </PageBody>
     </>
   );
 }

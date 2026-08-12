@@ -1,152 +1,266 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
-  adminApi,
+  adminUsersApi,
   apiErrorMessage,
+  fileUrl,
   toNumber,
-  type AdminProviderListItem,
+  type AdminUserListItem,
+  type VerificationStatus,
 } from '@/lib/api';
-import { Badge, Button, Empty, ErrorNote, inputClass, PageHeader, Pagination, rupees, Table } from '@/components/ui';
+import {
+  Badge,
+  Chip,
+  CheckboxRow,
+  Empty,
+  ErrorNote,
+  FilterPanel,
+  FilterSection,
+  PageBody,
+  PageHeader,
+  Pagination,
+  RadioRow,
+  StarRating,
+  StatTriple,
+  Table,
+  Toggle,
+  rupees,
+} from '@/components/ui';
+
+/**
+ * Provider management, per the Figma "provider-management" frame: a sticky
+ * filter rail beside a grid of provider cards, with a table fallback behind
+ * the Grid View toggle.
+ *
+ * Providers are fetched through `/admin/users?role=PROVIDER` rather than
+ * `/admin/providers` — the users endpoint is the one that returns the city and
+ * rating summary the cards display.
+ */
+type SortKey = 'rating' | 'recent' | 'city';
+
+const STATUS_FILTERS: { key: string; label: string; verification: VerificationStatus }[] = [
+  { key: 'active', label: 'Active', verification: 'APPROVED' },
+  { key: 'pending', label: 'Pending', verification: 'PENDING' },
+  { key: 'banned', label: 'Banned', verification: 'BANNED' },
+];
 
 export default function ProvidersPage() {
-  const [providers, setProviders] = useState<AdminProviderListItem[]>([]);
+  const [providers, setProviders] = useState<AdminUserListItem[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(
-    (nextPage: number, term = search) => {
-      setLoading(true);
-      adminApi.providers
-        .list({ page: nextPage, limit: 20, search: term || undefined })
-        .then((res) => {
-          setProviders(res.data);
-          setPage(res.meta.page);
-          setTotalPages(res.meta.totalPages);
-        })
-        .catch((err) => setError(apiErrorMessage(err, 'Could not load providers.')))
-        .finally(() => setLoading(false));
-    },
-    [search],
-  );
+  const [checked, setChecked] = useState<Record<string, boolean>>({
+    active: true,
+    pending: true,
+    banned: false,
+  });
+  const [sort, setSort] = useState<SortKey>('rating');
+  const [city, setCity] = useState<string | null>(null);
+  const [gridView, setGridView] = useState(true);
 
-  useEffect(() => {
-    load(1, '');
-    // Initial load only; searching is explicit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const load = useCallback((nextPage: number) => {
+    adminUsersApi
+      .list({ page: nextPage, limit: 24, role: 'PROVIDER' })
+      .then((res) => {
+        setError(null);
+        setProviders(res.data);
+        setPage(res.meta.page);
+        setTotalPages(res.meta.totalPages);
+      })
+      .catch((err) => setError(apiErrorMessage(err, 'Could not load providers.')))
+      .finally(() => setLoading(false));
   }, []);
 
-  const suspend = async (provider: AdminProviderListItem) => {
-    const reason = window.prompt(`Why are you suspending ${provider.fullName}?`);
-    if (!reason?.trim()) return;
-    setBusyId(provider.id);
-    setError(null);
-    try {
-      await adminApi.providers.suspend(provider.id, reason.trim());
-      load(page);
-    } catch (err) {
-      setError(apiErrorMessage(err, 'Could not suspend this provider.'));
-    } finally {
-      setBusyId(null);
-    }
-  };
+  useEffect(() => {
+    load(1);
+  }, [load]);
 
-  const unsuspend = async (provider: AdminProviderListItem) => {
-    setBusyId(provider.id);
-    setError(null);
-    try {
-      await adminApi.providers.unsuspend(provider.id);
-      load(page);
-    } catch (err) {
-      setError(apiErrorMessage(err, 'Could not reinstate this provider.'));
-    } finally {
-      setBusyId(null);
-    }
-  };
+  /** Cities come from the loaded providers — there is no city list endpoint. */
+  const cities = useMemo(
+    () => [...new Set(providers.map((p) => p.city?.name).filter(Boolean))] as string[],
+    [providers],
+  );
+
+  // Status and city narrow the loaded page client-side; the API filters by a
+  // single verificationStatus only, which cannot express "active OR pending".
+  const visible = useMemo(() => {
+    const wanted = STATUS_FILTERS.filter((s) => checked[s.key]).map((s) => s.verification);
+    const list = providers.filter(
+      (p) =>
+        (wanted.length === 0 || wanted.includes(p.verificationStatus)) &&
+        (!city || p.city?.name === city),
+    );
+    return [...list].sort((a, b) => {
+      if (sort === 'rating') {
+        return toNumber(b.ratingSummary?.averageRating) - toNumber(a.ratingSummary?.averageRating);
+      }
+      if (sort === 'recent') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return (a.city?.name ?? '').localeCompare(b.city?.name ?? '');
+    });
+  }, [providers, checked, city, sort]);
 
   return (
     <>
       <PageHeader
-        title="Providers"
-        subtitle="Service providers and their verification status."
-        actions={
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              load(1);
-            }}
-            className="flex gap-2">
-            <input
-              placeholder="Search name, email or phone"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={`w-64 ${inputClass}`}
-            />
-            <Button type="submit" variant="secondary">
-              Search
-            </Button>
-          </form>
-        }
+        title="Provider Management"
+        subtitle="Verify, monitor and manage home service experts across Pakistan"
       />
 
-      <ErrorNote message={error} />
-      {loading && <p className="text-sm text-fg-subtle">Loading…</p>}
-      {!loading && providers.length === 0 && <Empty message="No providers found." />}
+      <PageBody>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[270px_1fr]">
+          <FilterPanel subtitle="Refine service provider list">
+            <FilterSection label="Provider status">
+              {STATUS_FILTERS.map((s) => (
+                <CheckboxRow
+                  key={s.key}
+                  label={s.label}
+                  checked={checked[s.key]}
+                  onChange={(v) => setChecked((c) => ({ ...c, [s.key]: v }))}
+                />
+              ))}
+            </FilterSection>
 
-      {providers.length > 0 && (
-        <Table head={['Provider', 'Contact', 'Verification', 'Rating', 'Wallet', 'Actions']}>
-          {providers.map((provider) => (
-            <tr key={provider.id}>
-              <td className="px-4 py-3">
-                <p className="font-medium">{provider.fullName}</p>
-                <p className="text-xs text-fg-muted">
-                  {provider.providerProfile?.hourlyRate
-                    ? `${rupees(toNumber(provider.providerProfile.hourlyRate))}/hr`
-                    : 'No rate set'}
-                </p>
-              </td>
-              <td className="px-4 py-3 text-sm text-fg-muted">
-                {provider.email}
-                <span className="block text-xs text-fg-muted">{provider.phone}</span>
-              </td>
-              <td className="px-4 py-3">
-                <Badge status={provider.verificationStatus} />
-              </td>
-              <td className="px-4 py-3 text-sm tabular-nums text-fg-muted">
-                {provider.ratingSummary
-                  ? `${toNumber(provider.ratingSummary.averageRating).toFixed(1)} ★ (${provider.ratingSummary.totalReviews})`
-                  : '—'}
-              </td>
-              <td className="px-4 py-3 text-sm tabular-nums text-fg-muted">
-                {provider.wallet ? rupees(toNumber(provider.wallet.balance)) : '—'}
-              </td>
-              <td className="px-4 py-3">
-                {provider.status === 'ACTIVE' ? (
-                  <Button
-                    variant="danger"
-                    disabled={busyId === provider.id}
-                    onClick={() => suspend(provider)}>
-                    Suspend
-                  </Button>
-                ) : (
-                  <Button
-                    variant="success"
-                    disabled={busyId === provider.id}
-                    onClick={() => unsuspend(provider)}>
-                    Reinstate
-                  </Button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </Table>
-      )}
+            <FilterSection label="Sort & filter by">
+              <RadioRow label="Rating" checked={sort === 'rating'} onChange={() => setSort('rating')} />
+              <RadioRow
+                label="Recent registrations"
+                checked={sort === 'recent'}
+                onChange={() => setSort('recent')}
+              />
+              <RadioRow label="City" checked={sort === 'city'} onChange={() => setSort('city')} />
+            </FilterSection>
 
-      <Pagination page={page} totalPages={totalPages} onChange={(p) => load(p)} />
+            <FilterSection label="Active cities">
+              <div className="flex flex-wrap gap-2">
+                {cities.length === 0 && <p className="text-xs text-fg-subtle">No cities yet.</p>}
+                {cities.map((c) => (
+                  <Chip
+                    key={c}
+                    label={c}
+                    active={city === c}
+                    onClick={() => setCity(city === c ? null : c)}
+                  />
+                ))}
+              </div>
+            </FilterSection>
+          </FilterPanel>
+
+          <div className="min-w-0 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-fg">
+                Showing {visible.length} partner{visible.length === 1 ? '' : 's'}
+                {city ? ` in ${city}` : ''}
+              </p>
+              <Toggle label="Grid View" checked={gridView} onChange={setGridView} />
+            </div>
+
+            <ErrorNote message={error} />
+            {loading && <p className="text-sm text-fg-subtle">Loading…</p>}
+            {!loading && visible.length === 0 && (
+              <Empty message="No providers match these filters." />
+            )}
+
+            {!loading && visible.length > 0 && gridView && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {visible.map((p) => (
+                  <ProviderCard key={p.id} provider={p} />
+                ))}
+              </div>
+            )}
+
+            {!loading && visible.length > 0 && !gridView && (
+              <Table head={['Provider', 'City', 'Status', 'Rating', 'Balance', '']}>
+                {visible.map((p) => (
+                  <tr key={p.id} className="transition hover:bg-surface-muted">
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/users/${p.id}`}
+                        className="cursor-pointer font-medium hover:text-brand">
+                        {p.fullName}
+                      </Link>
+                      <span className="block text-xs text-fg-subtle">{p.email}</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-fg-muted">{p.city?.name ?? '—'}</td>
+                    <td className="px-4 py-3">
+                      <Badge status={p.verificationStatus} />
+                    </td>
+                    <td className="px-4 py-3 text-sm tabular-nums text-fg-muted">
+                      {toNumber(p.ratingSummary?.averageRating).toFixed(1)}
+                    </td>
+                    <td className="px-4 py-3 text-sm tabular-nums text-fg-muted">
+                      {rupees(toNumber(p.wallet?.balance))}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/users/${p.id}`}
+                        className="cursor-pointer text-sm font-medium text-brand hover:underline">
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </Table>
+            )}
+
+            <Pagination page={page} totalPages={totalPages} onChange={load} />
+          </div>
+        </div>
+      </PageBody>
     </>
+  );
+}
+
+function ProviderCard({ provider }: { provider: AdminUserListItem }) {
+  const rating = toNumber(provider.ratingSummary?.averageRating);
+  const reviews = provider.ratingSummary?.totalReviews ?? 0;
+
+  return (
+    <article className="flex flex-col rounded-2xl border border-line bg-surface p-5 shadow-card">
+      <div className="flex items-start gap-3">
+        {provider.profilePhoto ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={fileUrl(provider.profilePhoto)}
+            alt=""
+            className="h-11 w-11 shrink-0 rounded-full border border-line object-cover"
+          />
+        ) : (
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-soft text-sm font-semibold text-brand">
+            {provider.fullName.slice(0, 1).toUpperCase()}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-semibold text-fg">{provider.fullName}</p>
+          <p className="truncate text-xs text-fg-muted">{provider.email}</p>
+        </div>
+        <Badge status={provider.verificationStatus} />
+      </div>
+
+      <div className="my-4 border-t border-line" />
+
+      <StatTriple
+        items={[
+          { label: 'City', value: provider.city?.name ?? '—' },
+          { label: 'Reviews', value: reviews },
+          { label: 'Balance', value: rupees(toNumber(provider.wallet?.balance)) },
+        ]}
+      />
+
+      <div className="mt-3">
+        <StarRating value={rating} />
+      </div>
+
+      <Link
+        href={`/users/${provider.id}`}
+        className="mt-4 cursor-pointer rounded-lg bg-header px-3 py-2.5 text-center text-sm font-medium text-fg-on-dark transition hover:bg-header-card">
+        View Profile
+      </Link>
+    </article>
   );
 }

@@ -1,261 +1,265 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   adminUsersApi,
   apiErrorMessage,
+  fileUrl,
+  toNumber,
   type AdminUserListItem,
-  type AdminUserQuery,
-  type BackendRole,
-  type UserStatus,
-  type VerificationStatus,
 } from '@/lib/api';
+import { SearchIcon } from '@/components/icons';
 import {
   Badge,
-  Button,
+  CheckboxRow,
   Empty,
   ErrorNote,
-  Field,
-  FilterBar,
+  FilterPanel,
+  FilterSection,
+  PageBody,
   PageHeader,
   Pagination,
-  Table,
-  Tabs,
+  RadioRow,
   inputClass,
+  rupees,
   selectClass,
 } from '@/components/ui';
 
 /**
- * Tabs are presets over the same `/admin/users` query — each one just seeds a
- * different filter combination, so switching tabs and hand-filtering share one
- * code path.
+ * Customer management, per the Figma "customer-management" frame: filter rail
+ * plus a grid of customer cards.
+ *
+ * The card's third stat is "Total spent" rather than the mockup's "Jobs
+ * posted" — the list endpoint returns spend but not a per-customer job count,
+ * and one detail request per card would be far too chatty.
  */
-type TabValue = 'all' | 'customers' | 'providers' | 'admins' | 'suspended' | 'deleted';
+type SortKey = 'spend' | 'balance' | 'recent';
 
-const TAB_FILTERS: Record<TabValue, Partial<AdminUserQuery>> = {
-  all: {},
-  customers: { role: 'CUSTOMER' },
-  providers: { role: 'PROVIDER' },
-  admins: { role: 'ADMIN' },
-  suspended: { status: 'SUSPENDED' },
-  deleted: { deleted: 'true' },
-};
-
-const TABS: { value: TabValue; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'customers', label: 'Customers' },
-  { value: 'providers', label: 'Providers' },
-  { value: 'admins', label: 'Admins' },
-  { value: 'suspended', label: 'Suspended' },
-  { value: 'deleted', label: 'Deleted' },
-];
-
-const ROLES: BackendRole[] = ['CUSTOMER', 'PROVIDER', 'ADMIN'];
-const STATUSES: UserStatus[] = ['ACTIVE', 'SUSPENDED', 'BANNED'];
-const VERIFICATIONS: VerificationStatus[] = [
-  'INCOMPLETE',
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'BANNED',
-];
-
-export default function UsersPage() {
-  const [tab, setTab] = useState<TabValue>('all');
-  const [users, setUsers] = useState<AdminUserListItem[]>([]);
+export default function CustomersPage() {
+  const [customers, setCustomers] = useState<AdminUserListItem[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Draft filter state lives separately so typing doesn't refetch on every key.
+  const [showActive, setShowActive] = useState(true);
+  const [showBanned, setShowBanned] = useState(false);
+  const [sort, setSort] = useState<SortKey>('spend');
+  const [city, setCity] = useState('');
   const [search, setSearch] = useState('');
-  const [role, setRole] = useState('');
-  const [status, setStatus] = useState('');
-  const [verification, setVerification] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
   const [applied, setApplied] = useState(0);
 
   const load = useCallback(
     (nextPage: number) => {
-      const query: AdminUserQuery = {
-        page: nextPage,
-        limit: 10,
-        ...TAB_FILTERS[tab],
-        ...(search.trim() ? { search: search.trim() } : {}),
-        ...(role ? { role: role as BackendRole } : {}),
-        ...(status ? { status: status as UserStatus } : {}),
-        ...(verification ? { verificationStatus: verification as VerificationStatus } : {}),
-        ...(dateFrom ? { dateFrom } : {}),
-        ...(dateTo ? { dateTo } : {}),
-      };
       adminUsersApi
-        .list(query)
+        .list({
+          page: nextPage,
+          limit: 24,
+          role: 'CUSTOMER',
+          ...(search.trim() ? { search: search.trim() } : {}),
+        })
         .then((res) => {
           setError(null);
-          setUsers(res.data);
+          setCustomers(res.data);
           setPage(res.meta.page);
           setTotalPages(res.meta.totalPages);
           setTotal(res.meta.total);
         })
-        .catch((err) => setError(apiErrorMessage(err, 'Could not load users.')))
+        .catch((err) => setError(apiErrorMessage(err, 'Could not load customers.')))
         .finally(() => setLoading(false));
     },
-    // `applied` is the explicit "Apply filters" trigger; the draft fields above
-    // are read at call time and deliberately excluded from the dependency list.
+    // `search` is read at call time; `applied` is the explicit trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tab, applied],
+    [applied],
   );
 
   useEffect(() => {
     load(1);
   }, [load]);
 
-  /** Re-fetch triggers own the loading flag — the effect must not set state synchronously. */
-  const reload = (fn: () => void) => {
-    setLoading(true);
-    fn();
-  };
+  const cities = useMemo(
+    () => [...new Set(customers.map((c) => c.city?.name).filter(Boolean))] as string[],
+    [customers],
+  );
 
-  const resetFilters = () => {
+  // Status and city narrow the loaded page client-side — the API takes a single
+  // status, which cannot express "active OR banned".
+  const visible = useMemo(() => {
+    const list = customers.filter((c) => {
+      const banned = c.status === 'BANNED' || c.status === 'SUSPENDED' || !!c.deletedAt;
+      if (banned && !showBanned) return false;
+      if (!banned && !showActive) return false;
+      return !city || c.city?.name === city;
+    });
+    return [...list].sort((a, b) => {
+      if (sort === 'spend') return toNumber(b.totalSpent) - toNumber(a.totalSpent);
+      if (sort === 'balance')
+        return toNumber(b.wallet?.balance) - toNumber(a.wallet?.balance);
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [customers, showActive, showBanned, city, sort]);
+
+  const resetAll = () => {
+    setShowActive(true);
+    setShowBanned(false);
+    setSort('spend');
+    setCity('');
     setSearch('');
-    setRole('');
-    setStatus('');
-    setVerification('');
-    setDateFrom('');
-    setDateTo('');
-    reload(() => setApplied((n) => n + 1));
+    setLoading(true);
+    setApplied((n) => n + 1);
   };
 
   return (
     <>
       <PageHeader
-        title="Users"
-        subtitle="Every customer, provider and admin account."
-        actions={<span className="text-sm text-fg-muted">{total} total</span>}
+        title="Customer Management"
+        subtitle="Manage consumer user accounts, wallet balances, and operation tracking across Pakistan"
       />
 
-      <Tabs tabs={TABS} value={tab} onChange={(t) => reload(() => setTab(t))} />
+      <PageBody>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[270px_1fr]">
+          <FilterPanel>
+            <div className="-mt-9 mb-1 flex justify-end">
+              <button
+                type="button"
+                onClick={resetAll}
+                className="cursor-pointer text-sm font-medium text-brand hover:underline">
+                Reset All
+              </button>
+            </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          reload(() => setApplied((n) => n + 1));
-        }}>
-        <FilterBar>
-          <Field label="Search">
-            <input
-              placeholder="Name, email or phone"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={`w-56 ${inputClass}`}
-            />
-          </Field>
-          <Field label="Role">
-            <select value={role} onChange={(e) => setRole(e.target.value)} className={selectClass}>
-              <option value="">Any</option>
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r.toLowerCase()}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Status">
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className={selectClass}>
-              <option value="">Any</option>
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s.toLowerCase()}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Verification">
-            <select
-              value={verification}
-              onChange={(e) => setVerification(e.target.value)}
-              className={selectClass}>
-              <option value="">Any</option>
-              {VERIFICATIONS.map((v) => (
-                <option key={v} value={v}>
-                  {v.toLowerCase()}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Joined from">
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className={`cursor-pointer ${inputClass}`}
-            />
-          </Field>
-          <Field label="Joined to">
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className={`cursor-pointer ${inputClass}`}
-            />
-          </Field>
-          <div className="flex gap-2">
-            <Button type="submit">Apply</Button>
-            <Button type="button" variant="secondary" onClick={resetFilters}>
-              Reset
-            </Button>
+            <FilterSection label="Account status">
+              <CheckboxRow label="Active accounts" checked={showActive} onChange={setShowActive} />
+              <CheckboxRow label="Banned accounts" checked={showBanned} onChange={setShowBanned} />
+            </FilterSection>
+
+            <FilterSection label="Sort by activity">
+              <RadioRow label="Highest spend" checked={sort === 'spend'} onChange={() => setSort('spend')} />
+              <RadioRow
+                label="Highest wallet balance"
+                checked={sort === 'balance'}
+                onChange={() => setSort('balance')}
+              />
+              <RadioRow
+                label="Recently joined"
+                checked={sort === 'recent'}
+                onChange={() => setSort('recent')}
+              />
+            </FilterSection>
+
+            <FilterSection label="Filter by city">
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className={`w-full ${selectClass}`}>
+                <option value="">All cities</option>
+                {cities.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </FilterSection>
+          </FilterPanel>
+
+          <div className="min-w-0 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-fg">
+                Showing {visible.length} of {total} registered customers
+              </p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setLoading(true);
+                  setApplied((n) => n + 1);
+                }}
+                className="relative">
+                <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
+                <input
+                  placeholder="Search customer name…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className={`w-64 rounded-full pl-9 ${inputClass}`}
+                />
+              </form>
+            </div>
+
+            <ErrorNote message={error} />
+            {loading && <p className="text-sm text-fg-subtle">Loading…</p>}
+            {!loading && visible.length === 0 && (
+              <Empty message="No customers match these filters." />
+            )}
+
+            {!loading && visible.length > 0 && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {visible.map((c) => (
+                  <CustomerCard key={c.id} customer={c} />
+                ))}
+              </div>
+            )}
+
+            <Pagination page={page} totalPages={totalPages} onChange={load} />
           </div>
-        </FilterBar>
-      </form>
-
-      <ErrorNote message={error} />
-      {loading && <p className="text-sm text-fg-subtle">Loading…</p>}
-      {!loading && users.length === 0 && <Empty message="No users match these filters." />}
-
-      {!loading && users.length > 0 && (
-        <Table head={['Name', 'Contact', 'Role', 'Status', 'Verification', 'Joined', '']}>
-          {users.map((user) => (
-            <tr key={user.id} className="transition hover:bg-surface-muted">
-              <td className="px-4 py-3">
-                <Link href={`/users/${user.id}`} className="cursor-pointer font-medium hover:text-brand">
-                  {user.fullName}
-                </Link>
-                <p className="font-mono text-xs text-fg-subtle">{user.id.slice(0, 8)}</p>
-              </td>
-              <td className="px-4 py-3 text-sm text-fg-muted">
-                {user.email}
-                <span className="block text-xs text-fg-subtle">{user.phone}</span>
-              </td>
-              <td className="px-4 py-3 text-sm text-fg-muted">{user.role.toLowerCase()}</td>
-              <td className="px-4 py-3">
-                <Badge status={user.deletedAt ? 'REJECTED' : user.status} />
-              </td>
-              <td className="px-4 py-3">
-                {user.role === 'PROVIDER' ? <Badge status={user.verificationStatus} /> : '—'}
-              </td>
-              <td className="px-4 py-3 text-xs text-fg-muted">
-                {new Date(user.createdAt).toLocaleDateString('en-GB')}
-              </td>
-              <td className="px-4 py-3 text-right">
-                <Link
-                  href={`/users/${user.id}`}
-                  className="cursor-pointer rounded-lg px-2.5 py-1.5 text-sm font-medium text-brand transition hover:bg-surface-muted">
-                  View
-                </Link>
-              </td>
-            </tr>
-          ))}
-        </Table>
-      )}
-
-      <Pagination page={page} totalPages={totalPages} onChange={(p) => reload(() => load(p))} />
+        </div>
+      </PageBody>
     </>
+  );
+}
+
+function CustomerCard({ customer }: { customer: AdminUserListItem }) {
+  const rows = [
+    { label: 'Wallet balance', value: rupees(toNumber(customer.wallet?.balance)) },
+    { label: 'Total spent', value: rupees(toNumber(customer.totalSpent)) },
+    {
+      label: 'Joined date',
+      value: new Date(customer.createdAt).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }),
+    },
+  ];
+
+  return (
+    <article className="flex flex-col rounded-2xl border border-line bg-surface p-5 shadow-card">
+      <div className="flex items-start gap-3">
+        {customer.profilePhoto ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={fileUrl(customer.profilePhoto)}
+            alt=""
+            className="h-11 w-11 shrink-0 rounded-full border border-line object-cover"
+          />
+        ) : (
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-soft text-sm font-semibold text-brand">
+            {customer.fullName.slice(0, 1).toUpperCase()}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-semibold text-fg">{customer.fullName}</p>
+          <p className="truncate text-xs text-fg-muted">{customer.city?.name ?? customer.email}</p>
+        </div>
+        <Badge status={customer.deletedAt ? 'REJECTED' : customer.status} />
+      </div>
+
+      <div className="my-4 border-t border-line" />
+
+      <dl className="space-y-2.5">
+        {rows.map((r) => (
+          <div key={r.label} className="flex items-center justify-between gap-3 text-sm">
+            <dt className="text-fg-muted">{r.label}</dt>
+            <dd className="font-semibold tabular-nums text-fg">{r.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <Link
+        href={`/users/${customer.id}`}
+        className="mt-4 cursor-pointer rounded-lg bg-header px-3 py-2.5 text-center text-sm font-medium text-fg-on-dark transition hover:bg-header-card">
+        View Profile
+      </Link>
+    </article>
   );
 }

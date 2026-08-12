@@ -13,22 +13,7 @@ import {
   type UsersReport,
 } from '@/lib/api';
 import { BarList, ColumnChart, type BarDatum } from '@/components/charts';
-import {
-  Button,
-  Card,
-  Empty,
-  ErrorNote,
-  Field,
-  FilterBar,
-  PageHeader,
-  SectionLabel,
-  StatCard,
-  Table,
-  Tabs,
-  inputClass,
-  rupees,
-  selectClass,
-} from '@/components/ui';
+import { Button, Card, Empty, ErrorNote, Field, FilterBar, inputClass, PageBody, PageHeader, rupees, SectionLabel, selectClass, StatCard, Table, Tabs } from '@/components/ui';
 
 type ReportTab = 'users' | 'providers' | 'jobs' | 'financial' | 'disputes';
 
@@ -137,6 +122,7 @@ export default function ReportsPage() {
         subtitle="Platform analytics across users, providers, jobs, money and disputes."
       />
 
+      <PageBody>
       <Tabs tabs={TABS} value={tab} onChange={(t) => reload(() => setTab(t))} />
 
       <form
@@ -199,6 +185,7 @@ export default function ReportsPage() {
       {!loading && data && tab === 'disputes' && (
         <DisputesReportView report={data as DisputesReport} />
       )}
+      </PageBody>
     </>
   );
 }

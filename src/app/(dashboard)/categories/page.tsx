@@ -6,19 +6,7 @@ import {
   categoriesApi,
   type ServiceCategory,
 } from '@/lib/api';
-import {
-  Badge,
-  Button,
-  Card,
-  Empty,
-  ErrorNote,
-  Field,
-  FilterBar,
-  PageHeader,
-  Table,
-  inputClass,
-  selectClass,
-} from '@/components/ui';
+import { Badge, Button, Card, Empty, ErrorNote, Field, FilterBar, inputClass, PageBody, PageHeader, selectClass, Table } from '@/components/ui';
 
 type Filter = 'all' | 'active' | 'hidden';
 
@@ -138,6 +126,7 @@ export default function CategoriesPage() {
         actions={<span className="text-sm text-fg-muted">{categories.length} total</span>}
       />
 
+      <PageBody>
       <ErrorNote message={error} />
 
       <Card>
@@ -287,6 +276,7 @@ export default function CategoriesPage() {
         provider sign-up — while leaving existing jobs that used it untouched. Prefer it to
         deleting.
       </p>
+      </PageBody>
     </>
   );
 }

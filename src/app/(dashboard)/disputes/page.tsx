@@ -8,7 +8,7 @@ import {
   type DisputeListItem,
   type DisputeResolution,
 } from '@/lib/api';
-import { Badge, Button, Card, Empty, ErrorNote, inputClass, PageHeader, Pagination, rupees } from '@/components/ui';
+import { Badge, Button, Card, Empty, ErrorNote, inputClass, PageBody, PageHeader, Pagination, rupees } from '@/components/ui';
 
 const RESOLUTIONS: { value: DisputeResolution; label: string; needsAmount?: boolean }[] = [
   { value: 'FULL_REFUND', label: 'Full refund' },
@@ -75,9 +75,10 @@ export default function DisputesPage() {
       <PageHeader
         title="Disputes"
         subtitle="Jobs escalated by a customer or provider."
-        actions={<span className="text-sm text-fg-muted">{disputes.length} open</span>}
+        actions={<span className="text-sm text-fg-on-dark-muted">{disputes.length} open</span>}
       />
 
+      <PageBody>
       <ErrorNote message={error} />
 
       {loading && <p className="text-sm text-fg-subtle">Loading…</p>}
@@ -132,6 +133,7 @@ export default function DisputesPage() {
       </div>
 
       <Pagination page={page} totalPages={totalPages} onChange={load} />
+      </PageBody>
     </>
   );
 }

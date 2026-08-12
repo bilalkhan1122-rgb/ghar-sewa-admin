@@ -1,7 +1,7 @@
 /**
- * Inline stroke icons for the sidebar. Kept local rather than pulling in an icon
- * package — six glyphs is not worth a dependency, and these inherit `currentColor`
- * so they follow the nav's active/muted states for free.
+ * Inline stroke icons. Kept local rather than pulling in an icon package — a
+ * dozen glyphs is not worth a dependency, and these inherit `currentColor` so
+ * they follow whatever text token their container sets.
  */
 type IconProps = { className?: string };
 
@@ -109,5 +109,60 @@ export function ReportsIcon(p: IconProps) {
       <path d="M16 20v-7" />
       <path d="M22 20H2" />
     </Svg>
+  );
+}
+
+export function HouseIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" />
+      <path d="M9.5 21v-6h5v6" />
+    </Svg>
+  );
+}
+
+export function SearchIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </Svg>
+  );
+}
+
+export function BellIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5Z" />
+      <path d="M13.7 19a2 2 0 0 1-3.4 0" />
+    </Svg>
+  );
+}
+
+export function BriefcaseIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <rect x="3" y="7.5" width="18" height="12.5" rx="2" />
+      <path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5" />
+      <path d="M3 12.5h18" />
+    </Svg>
+  );
+}
+
+export function DollarIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M12 3v18" />
+      <path d="M16.5 7.5A3.5 3.5 0 0 0 13 5h-2a3 3 0 0 0 0 6h2a3 3 0 0 1 0 6h-2a3.5 3.5 0 0 1-3.5-2.5" />
+    </Svg>
+  );
+}
+
+export function StarIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="m12 3.6 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9.7l5.8-.8L12 3.6Z" />
+    </svg>
   );
 }

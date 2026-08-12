@@ -12,18 +12,7 @@ import {
   type AdminUserDetail,
   type VerificationRequestWithProvider,
 } from '@/lib/api';
-import {
-  Badge,
-  Button,
-  Card,
-  DetailRow,
-  ErrorNote,
-  PageHeader,
-  SectionLabel,
-  StatCard,
-  inputClass,
-  rupees,
-} from '@/components/ui';
+import { Badge, Button, Card, DetailRow, ErrorNote, inputClass, PageBody, PageHeader, rupees, SectionLabel, StatCard } from '@/components/ui';
 
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -105,12 +94,13 @@ export default function UserDetailPage() {
         actions={
           <Link
             href="/users"
-            className="cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium text-fg-muted transition hover:bg-surface-muted hover:text-fg">
+            className="cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium text-fg-on-dark-muted transition hover:bg-header-card hover:text-fg-on-dark">
             ← Back to users
           </Link>
         }
       />
 
+      <PageBody>
       <ErrorNote message={error} />
       {notice && (
         <p className="rounded-lg bg-ok-soft px-3 py-2 text-sm text-ok-fg ring-1 ring-ok-line">
@@ -367,6 +357,7 @@ export default function UserDetailPage() {
           Refresh
         </button>
       </Card>
+      </PageBody>
     </>
   );
 }

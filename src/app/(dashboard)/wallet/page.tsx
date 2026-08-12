@@ -9,7 +9,7 @@ import {
   type TopUpRequest,
   type WithdrawalRequest,
 } from '@/lib/api';
-import { Badge, Button, Empty, ErrorNote, PageHeader, rupees, SectionLabel, Table } from '@/components/ui';
+import { Badge, Button, Empty, ErrorNote, PageBody, PageHeader, rupees, SectionLabel, Table } from '@/components/ui';
 
 type TopUpRow = TopUpRequest & {
   user: { id: string; fullName: string; email: string; phone: string };
@@ -57,7 +57,8 @@ export default function WalletPage() {
   return (
     <>
       <PageHeader title="Wallet" subtitle="Top-up and withdrawal requests awaiting action." />
-      <ErrorNote message={error} />
+
+      <PageBody>      <ErrorNote message={error} />
       {loading && <p className="text-sm text-fg-subtle">Loading…</p>}
 
       <section className="space-y-3">
@@ -214,6 +215,7 @@ export default function WalletPage() {
           </Table>
         )}
       </section>
+      </PageBody>
     </>
   );
 }

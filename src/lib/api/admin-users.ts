@@ -45,6 +45,9 @@ export type AdminUserDetail = User & {
   };
 };
 
+/** Identity documents an admin can take down. Mirrors the backend path values. */
+export type IdentityDocument = 'facePhoto' | 'cnicFront' | 'cnicBack';
+
 export const adminUsersApi = {
   list: (params?: AdminUserQuery) =>
     api.get<Paginated<AdminUserListItem>>(`/admin/users${qs(params ?? {})}`),
@@ -61,6 +64,11 @@ export const adminUsersApi = {
     api.post<{ message: string; user: User }>(`/admin/users/${id}/profile-photo/remove`, {
       reason,
     }),
+  removeIdentityDocument: (id: string, document: IdentityDocument, reason: string) =>
+    api.post<{ message: string; document: IdentityDocument; filesDeleted: number }>(
+      `/admin/users/${id}/documents/${document}/remove`,
+      { reason },
+    ),
   removeGalleryImage: (id: string, imageId: string, reason: string) =>
     api.post<{ message: string; imageId: string }>(
       `/admin/users/${id}/gallery/${imageId}/remove`,

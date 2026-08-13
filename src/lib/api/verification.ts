@@ -5,9 +5,11 @@ export type VerificationRequest = {
   id: string;
   providerId: string;
   cnicNumber: string;
-  facePhoto: string;
-  cnicFrontImage: string;
-  cnicBackImage: string;
+  // Nullable: an admin can take a document down without deleting the request,
+  // so an already-reviewed request may have no image left to show.
+  facePhoto: string | null;
+  cnicFrontImage: string | null;
+  cnicBackImage: string | null;
   status: VerificationStatus;
   submittedAt: string;
   reviewedAt: string | null;

@@ -10,6 +10,7 @@ import {
   toNumber,
   verificationApi,
   type AdminUserDetail,
+  type IdentityDocument,
   type VerificationRequestWithProvider,
 } from '@/lib/api';
 import { Badge, Button, Card, DetailRow, ErrorNote, inputClass, PageBody, PageHeader, rupees, SectionLabel, StatCard } from '@/components/ui';
@@ -29,9 +30,16 @@ export default function UserDetailPage() {
   // its own reason field rather than borrowing the shared one at the bottom of
   // the page — an admin should not have to scroll away from the image to act.
   const [pendingRemoval, setPendingRemoval] = useState<
-    { kind: 'photo' } | { kind: 'gallery'; imageId: string } | null
+    | { kind: 'photo' }
+    | { kind: 'gallery'; imageId: string }
+    | { kind: 'document'; document: IdentityDocument }
+    | null
   >(null);
   const [removalReason, setRemovalReason] = useState('');
+  // The identity documents come from a second request keyed on the user id,
+  // which does not change when a document is removed — bumped explicitly so the
+  // block refetches instead of showing an image that is already deleted.
+  const [requestReloadKey, setRequestReloadKey] = useState(0);
 
   const load = useCallback(() => {
     adminUsersApi
@@ -62,7 +70,7 @@ export default function UserDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, user?.role]);
+  }, [user?.id, user?.role, requestReloadKey]);
 
   /** Runs an admin action, surfacing its message and refreshing the record. */
   const run = async (
@@ -105,11 +113,17 @@ export default function UserDetailPage() {
       return;
     }
     const why = removalReason.trim();
-    const ok = await run(() =>
-      pendingRemoval.kind === 'photo'
-        ? adminUsersApi.removeProfilePhoto(user.id, why)
-        : adminUsersApi.removeGalleryImage(user.id, pendingRemoval.imageId, why),
-    );
+    const ok = await run(() => {
+      switch (pendingRemoval.kind) {
+        case 'photo':
+          return adminUsersApi.removeProfilePhoto(user.id, why);
+        case 'gallery':
+          return adminUsersApi.removeGalleryImage(user.id, pendingRemoval.imageId, why);
+        case 'document':
+          return adminUsersApi.removeIdentityDocument(user.id, pendingRemoval.document, why);
+      }
+    });
+    if (ok && pendingRemoval.kind === 'document') setRequestReloadKey((n) => n + 1);
     // Left open on failure so the typed reason survives a retry.
     if (ok) {
       setPendingRemoval(null);
@@ -330,24 +344,49 @@ export default function UserDetailPage() {
             </p>
           )}
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {[
-              { label: 'Face photo', path: request.facePhoto },
-              { label: 'CNIC front', path: request.cnicFrontImage },
-              { label: 'CNIC back', path: request.cnicBackImage },
-            ].map((doc) => (
-              <figure key={doc.label} className="space-y-1">
-                <figcaption className="text-xs font-medium text-fg-muted">{doc.label}</figcaption>
-                <a href={fileUrl(doc.path)} target="_blank" rel="noreferrer" className="cursor-pointer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={fileUrl(doc.path)}
-                    alt={doc.label}
-                    className="h-40 w-full rounded-lg border border-line object-cover transition hover:opacity-90"
-                  />
-                </a>
+            {(
+              [
+                { label: 'Face photo', path: request.facePhoto, document: 'facePhoto' },
+                { label: 'CNIC front', path: request.cnicFrontImage, document: 'cnicFront' },
+                { label: 'CNIC back', path: request.cnicBackImage, document: 'cnicBack' },
+              ] as const
+            ).map((doc) => (
+              <figure key={doc.document} className="space-y-1">
+                <figcaption className="flex items-center justify-between gap-2 text-xs font-medium text-fg-muted">
+                  {doc.label}
+                  {doc.path && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setPendingRemoval({ kind: 'document', document: doc.document });
+                        setRemovalReason('');
+                      }}
+                      className="cursor-pointer rounded px-1.5 py-0.5 font-medium text-bad-fg transition hover:bg-bad-soft disabled:opacity-50">
+                      Remove
+                    </button>
+                  )}
+                </figcaption>
+                {doc.path ? (
+                  <a href={fileUrl(doc.path)} target="_blank" rel="noreferrer" className="cursor-pointer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={fileUrl(doc.path)}
+                      alt={doc.label}
+                      className="h-40 w-full rounded-lg border border-line object-cover transition hover:opacity-90"
+                    />
+                  </a>
+                ) : (
+                  // Placeholder rather than a broken <img>: a removed document
+                  // is a deliberate state an admin should be able to read.
+                  <div className="flex h-40 w-full items-center justify-center rounded-lg border border-dashed border-line-strong bg-surface-muted px-2 text-center text-xs text-fg-subtle">
+                    Removed by an administrator
+                  </div>
+                )}
               </figure>
             ))}
           </div>
+          {pendingRemoval?.kind === 'document' && removalConfirm}
           {/* Documents stay visible at any status; only the decision is gated. */}
           {awaitingReview ? (
             <div className="mt-4 flex flex-wrap items-center gap-2">

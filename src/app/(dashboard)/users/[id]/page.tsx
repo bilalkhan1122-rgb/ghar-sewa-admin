@@ -25,6 +25,13 @@ export default function UserDetailPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reason, setReason] = useState('');
+  // Image takedowns are irreversible, so they get their own confirm step with
+  // its own reason field rather than borrowing the shared one at the bottom of
+  // the page — an admin should not have to scroll away from the image to act.
+  const [pendingRemoval, setPendingRemoval] = useState<
+    { kind: 'photo' } | { kind: 'gallery'; imageId: string } | null
+  >(null);
+  const [removalReason, setRemovalReason] = useState('');
 
   const load = useCallback(() => {
     adminUsersApi
@@ -58,10 +65,13 @@ export default function UserDetailPage() {
   }, [user?.id, user?.role]);
 
   /** Runs an admin action, surfacing its message and refreshing the record. */
-  const run = async (action: () => Promise<{ message: string }>, needsReason = false) => {
+  const run = async (
+    action: () => Promise<{ message: string }>,
+    needsReason = false,
+  ): Promise<boolean> => {
     if (needsReason && !reason.trim()) {
       setError('Enter a reason first — it is recorded in the audit log and sent to the user.');
-      return;
+      return false;
     }
     setBusy(true);
     setError(null);
@@ -71,8 +81,10 @@ export default function UserDetailPage() {
       setNotice(res.message);
       setReason('');
       load();
+      return true;
     } catch (err) {
       setError(apiErrorMessage(err, 'That action failed.'));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -85,6 +97,55 @@ export default function UserDetailPage() {
   // Only surface the request block while this provider is actually awaiting review.
   const awaitingReview = isProvider && user.verificationStatus === 'PENDING';
   const profile = user.providerProfile;
+
+  const confirmRemoval = async () => {
+    if (!pendingRemoval) return;
+    if (!removalReason.trim()) {
+      setError('Enter a reason — it is recorded in the audit log and sent to the user.');
+      return;
+    }
+    const why = removalReason.trim();
+    const ok = await run(() =>
+      pendingRemoval.kind === 'photo'
+        ? adminUsersApi.removeProfilePhoto(user.id, why)
+        : adminUsersApi.removeGalleryImage(user.id, pendingRemoval.imageId, why),
+    );
+    // Left open on failure so the typed reason survives a retry.
+    if (ok) {
+      setPendingRemoval(null);
+      setRemovalReason('');
+    }
+  };
+
+  /** Confirm step shown in place of the image being taken down. */
+  const removalConfirm = (
+    <div className="mt-3 space-y-2 rounded-lg bg-bad-soft p-3 ring-1 ring-bad-line">
+      <p className="text-xs text-bad-fg">
+        This permanently deletes the stored file — it cannot be undone.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          autoFocus
+          placeholder="Reason (required)"
+          value={removalReason}
+          onChange={(e) => setRemovalReason(e.target.value)}
+          className={`min-w-[220px] flex-1 ${inputClass}`}
+        />
+        <Button variant="danger" disabled={busy} onClick={confirmRemoval}>
+          {busy ? 'Removing…' : 'Confirm removal'}
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={busy}
+          onClick={() => {
+            setPendingRemoval(null);
+            setRemovalReason('');
+          }}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -109,19 +170,31 @@ export default function UserDetailPage() {
       )}
 
       {user.profilePhoto && (
-        <div className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 shadow-card">
-          <a href={fileUrl(user.profilePhoto)} target="_blank" rel="noreferrer" className="cursor-pointer">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={fileUrl(user.profilePhoto)}
-              alt={`${user.fullName} profile photo`}
-              className="h-20 w-20 rounded-full border border-line object-cover transition hover:opacity-90"
-            />
-          </a>
-          <div>
-            <p className="text-sm font-medium">Profile photo</p>
-            <p className="text-xs text-fg-subtle">Click to open the full-size image.</p>
+        <div className="rounded-2xl border border-line bg-surface p-4 shadow-card">
+          <div className="flex items-center gap-4">
+            <a href={fileUrl(user.profilePhoto)} target="_blank" rel="noreferrer" className="cursor-pointer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={fileUrl(user.profilePhoto)}
+                alt={`${user.fullName} profile photo`}
+                className="h-20 w-20 rounded-full border border-line object-cover transition hover:opacity-90"
+              />
+            </a>
+            <div className="flex-1">
+              <p className="text-sm font-medium">Profile photo</p>
+              <p className="text-xs text-fg-subtle">Click to open the full-size image.</p>
+            </div>
+            <Button
+              variant="danger"
+              disabled={busy}
+              onClick={() => {
+                setPendingRemoval({ kind: 'photo' });
+                setRemovalReason('');
+              }}>
+              Remove photo
+            </Button>
           </div>
+          {pendingRemoval?.kind === 'photo' && removalConfirm}
         </div>
       )}
 
@@ -199,22 +272,43 @@ export default function UserDetailPage() {
           {profile.galleryImages.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
               {profile.galleryImages.map((img) => (
-                <a
-                  key={img.id}
-                  href={fileUrl(img.imageUrl)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="cursor-pointer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={fileUrl(img.imageUrl)}
-                    alt="Provider work sample"
-                    className="h-24 w-24 rounded-lg border border-line object-cover transition hover:opacity-90"
-                  />
-                </a>
+                // The remove control is a sibling of the link, not nested inside
+                // it: a button within an anchor is invalid and would also open
+                // the image in a new tab on click.
+                <div key={img.id} className="relative">
+                  <a
+                    href={fileUrl(img.imageUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="cursor-pointer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={fileUrl(img.imageUrl)}
+                      alt="Provider work sample"
+                      className="h-24 w-24 rounded-lg border border-line object-cover transition hover:opacity-90"
+                    />
+                  </a>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setPendingRemoval({ kind: 'gallery', imageId: img.id });
+                      setRemovalReason('');
+                    }}
+                    aria-label="Remove this gallery image"
+                    title="Remove this gallery image"
+                    className={`absolute -right-1.5 -top-1.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full text-sm leading-none shadow-sm ring-1 transition disabled:opacity-50 ${
+                      pendingRemoval?.kind === 'gallery' && pendingRemoval.imageId === img.id
+                        ? 'bg-bad-solid text-white ring-bad-line'
+                        : 'bg-surface text-bad-fg ring-line-strong hover:bg-bad-solid hover:text-white'
+                    }`}>
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
           )}
+          {pendingRemoval?.kind === 'gallery' && removalConfirm}
         </Card>
       )}
 

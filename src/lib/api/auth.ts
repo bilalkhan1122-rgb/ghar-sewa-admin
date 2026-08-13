@@ -12,6 +12,14 @@ export const authApi = {
    */
   resetPassword: (payload: { token: string; newPassword: string }) =>
     api.post<{ message: string }>('/auth/reset-password', payload),
+  /**
+   * Confirms an email address from the link in a verification mail. Like
+   * resetPassword this serves every role, not just admins — Google sign-ups
+   * are the main source of these mails and the app has no web page to host
+   * the flow.
+   */
+  verifyEmail: (payload: { token: string }) =>
+    api.post<{ message: string }>('/auth/verify-email', payload),
   refresh: () => api.post<{ message: string }>('/auth/refresh'),
   logout: () => api.post<{ message: string }>('/auth/logout'),
   me: () => api.get<User>('/auth/me'),

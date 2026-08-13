@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import { ApiError, apiErrorMessage } from '@/lib/api';
 import { NOT_AN_ADMIN_MESSAGE, useAuth } from '@/lib/auth';
 import { Button, ErrorNote, inputClass } from '@/components/ui';
+import { EyeIcon, EyeOffIcon } from '@/components/icons';
 
 export default function LoginPage() {
   const { login, status } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -67,16 +69,31 @@ export default function LoginPage() {
           />
         </label>
 
-        <label className="block space-y-1">
-          <span className="text-sm font-medium text-fg">Password</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={`w-full ${inputClass}`}
-          />
-        </label>
+        {/* Not a wrapping <label> like the field above: the reveal toggle is
+            interactive content, which a label may not contain. */}
+        <div className="space-y-1">
+          <label htmlFor="password" className="block text-sm font-medium text-fg">
+            Password
+          </label>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={`w-full pr-10 ${inputClass}`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={showPassword}
+              className="absolute inset-y-0 right-0 flex items-center px-3 text-fg-subtle outline-none hover:text-fg focus-visible:text-fg">
+              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+            </button>
+          </div>
+        </div>
 
         <Button type="submit" disabled={submitting} className="w-full py-2">
           {submitting ? 'Signing in…' : 'Sign in'}

@@ -56,4 +56,14 @@ export const adminUsersApi = {
   softDelete: (id: string, reason: string) =>
     api.post<{ message: string }>(`/admin/users/${id}/delete`, { reason }),
   restore: (id: string) => api.post<{ message: string }>(`/admin/users/${id}/restore`),
+
+  removeProfilePhoto: (id: string, reason: string) =>
+    api.post<{ message: string; user: User }>(`/admin/users/${id}/profile-photo/remove`, {
+      reason,
+    }),
+  removeGalleryImage: (id: string, imageId: string, reason: string) =>
+    api.post<{ message: string; imageId: string }>(
+      `/admin/users/${id}/gallery/${imageId}/remove`,
+      { reason },
+    ),
 };

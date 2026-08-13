@@ -33,6 +33,8 @@ const NAV: NavItem[] = [
     count: (w) => w.pendingTopUps + w.pendingWithdrawals,
   },
   { href: '/reports', label: 'Reports' },
+  { href: '/notifications', label: 'Notifications' },
+  { href: '/settings', label: 'Settings' },
   { href: '/analytics', label: 'Analytics' },
 ];
 

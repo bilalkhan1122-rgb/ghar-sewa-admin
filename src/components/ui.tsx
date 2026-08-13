@@ -264,7 +264,7 @@ export function Button({
 }: {
   children: ReactNode;
   onClick?: () => void;
-  variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'dark';
+  variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'dark' | 'approve';
   disabled?: boolean;
   type?: 'button' | 'submit';
   className?: string;
@@ -273,6 +273,9 @@ export function Button({
     primary: 'bg-brand text-brand-fg hover:bg-brand-hover',
     secondary: 'bg-surface text-fg ring-1 ring-line-strong hover:bg-surface-muted',
     dark: 'bg-header text-fg-on-dark hover:bg-header-card',
+    // Solid green for a page-level confirm (Approve & Activate), as distinct
+    // from the quiet `success` used for repeated row actions.
+    approve: 'bg-ok-solid text-white hover:bg-ok-solid-hover',
     // Row actions repeat once per record, so these stay quiet until hovered —
     // a table of solid red buttons reads as an alarm, not a list.
     danger: 'bg-bad-soft text-bad-fg ring-1 ring-bad-line hover:bg-bad-solid hover:text-white',

@@ -18,6 +18,7 @@ import {
   PageHeader,
   inputClass,
 } from '@/components/ui';
+import { useToast } from '@/components/toast';
 
 /**
  * Provider verifications, per the Figma "provider-verifications" frame: a
@@ -25,11 +26,12 @@ import {
  * on the right, with the approve/reject decision at the foot of the detail.
  */
 export default function VerificationsPage() {
+  const toast = useToast();
   const [requests, setRequests] = useState<VerificationRequestWithProvider[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // `error` is only for a page that would not load; action outcomes toast.
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reason, setReason] = useState('');
 
@@ -56,23 +58,21 @@ export default function VerificationsPage() {
   const decide = async (action: 'approve' | 'reject') => {
     if (!selected) return;
     if (action === 'reject' && !reason.trim()) {
-      setError('Enter a rejection reason — it is sent to the provider.');
+      toast.error('Enter a rejection reason — it is sent to the provider.');
       return;
     }
     setBusy(true);
-    setError(null);
-    setNotice(null);
     try {
       const res =
         action === 'approve'
           ? await verificationApi.approve(selected.id)
           : await verificationApi.reject(selected.id, reason.trim());
-      setNotice(res.message);
+      toast.success(res.message);
       setReason('');
       setLoading(true);
       load();
     } catch (err) {
-      setError(apiErrorMessage(err, 'That decision could not be saved.'));
+      toast.error(apiErrorMessage(err, 'That decision could not be saved.'));
     } finally {
       setBusy(false);
     }
@@ -87,11 +87,6 @@ export default function VerificationsPage() {
 
       <PageBody>
         <ErrorNote message={error} />
-        {notice && (
-          <p className="rounded-lg bg-ok-soft px-3 py-2 text-sm text-ok-fg ring-1 ring-ok-line">
-            {notice}
-          </p>
-        )}
         {loading && <p className="text-sm text-fg-subtle">Loading…</p>}
 
         {!loading && requests.length === 0 && (

@@ -24,6 +24,7 @@ import {
   rupees,
   selectClass,
 } from '@/components/ui';
+import { useToast } from '@/components/toast';
 
 /**
  * Dispute resolution, per the Figma "dispute-resolution" frame: a status filter
@@ -47,10 +48,11 @@ const RESOLUTIONS: { value: DisputeResolution; label: string }[] = [
 type Row = DisputeListItem & { _count: { evidences: number } };
 
 export default function DisputesPage() {
+  const toast = useToast();
   const [disputes, setDisputes] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  // `error` is only for a page that would not load; action outcomes toast.
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -85,16 +87,14 @@ export default function DisputesPage() {
 
   const run = async (id: string, action: () => Promise<{ message: string }>) => {
     setBusy(id);
-    setError(null);
-    setNotice(null);
     try {
       const res = await action();
-      setNotice(res.message);
+      toast.success(res.message);
       setOpenId(null);
       setLoading(true);
       load();
     } catch (err) {
-      setError(apiErrorMessage(err, 'That action failed.'));
+      toast.error(apiErrorMessage(err, 'That action failed.'));
     } finally {
       setBusy(null);
     }
@@ -127,11 +127,6 @@ export default function DisputesPage() {
 
           <div className="min-w-0 space-y-4">
             <ErrorNote message={error} />
-            {notice && (
-              <p className="rounded-lg bg-ok-soft px-3 py-2 text-sm text-ok-fg ring-1 ring-ok-line">
-                {notice}
-              </p>
-            )}
             {loading && <p className="text-sm text-fg-subtle">Loading…</p>}
             {!loading && visible.length === 0 && (
               <Empty message="No disputes match these filters." />

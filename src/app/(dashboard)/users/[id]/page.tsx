@@ -14,16 +14,18 @@ import {
   type VerificationRequestWithProvider,
 } from '@/lib/api';
 import { Badge, Button, Card, DetailRow, ErrorNote, inputClass, PageBody, PageHeader, rupees, SectionLabel, StatCard } from '@/components/ui';
+import { useToast } from '@/components/toast';
 
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const toast = useToast();
 
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [request, setRequest] = useState<VerificationRequestWithProvider | null>(null);
   const [loading, setLoading] = useState(true);
+  // `error` is only for a page that would not load; action outcomes toast.
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reason, setReason] = useState('');
   // Image takedowns are irreversible, so they get their own confirm step with
@@ -78,20 +80,18 @@ export default function UserDetailPage() {
     needsReason = false,
   ): Promise<boolean> => {
     if (needsReason && !reason.trim()) {
-      setError('Enter a reason first — it is recorded in the audit log and sent to the user.');
+      toast.error('Enter a reason first — it is recorded in the audit log and sent to the user.');
       return false;
     }
     setBusy(true);
-    setError(null);
-    setNotice(null);
     try {
       const res = await action();
-      setNotice(res.message);
+      toast.success(res.message);
       setReason('');
       load();
       return true;
     } catch (err) {
-      setError(apiErrorMessage(err, 'That action failed.'));
+      toast.error(apiErrorMessage(err, 'That action failed.'));
       return false;
     } finally {
       setBusy(false);
@@ -109,7 +109,7 @@ export default function UserDetailPage() {
   const confirmRemoval = async () => {
     if (!pendingRemoval) return;
     if (!removalReason.trim()) {
-      setError('Enter a reason — it is recorded in the audit log and sent to the user.');
+      toast.error('Enter a reason — it is recorded in the audit log and sent to the user.');
       return;
     }
     const why = removalReason.trim();
@@ -177,11 +177,6 @@ export default function UserDetailPage() {
 
       <PageBody>
       <ErrorNote message={error} />
-      {notice && (
-        <p className="rounded-lg bg-ok-soft px-3 py-2 text-sm text-ok-fg ring-1 ring-ok-line">
-          {notice}
-        </p>
-      )}
 
       {user.profilePhoto && (
         <div className="rounded-2xl border border-line bg-surface p-4 shadow-card">

@@ -14,6 +14,7 @@ import {
 } from '@/lib/api';
 import { DollarIcon } from '@/components/icons';
 import { Badge, Button, CardHeading, Empty, ErrorNote, MetricCard, PageBody, PageHeader, rupees, SectionLabel, Table } from '@/components/ui';
+import { useToast } from '@/components/toast';
 
 type TopUpRow = TopUpRequest & {
   user: { id: string; fullName: string; email: string; phone: string };
@@ -23,6 +24,7 @@ type WithdrawalRow = WithdrawalRequest & {
 };
 
 export default function WalletPage() {
+  const toast = useToast();
   const [topUps, setTopUps] = useState<TopUpRow[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([]);
   const [ledger, setLedger] = useState<WalletTransaction[]>([]);
@@ -54,14 +56,19 @@ export default function WalletPage() {
     load();
   }, [load]);
 
-  const run = async (id: string, action: () => Promise<unknown>, failure: string) => {
+  const run = async (
+    id: string,
+    action: () => Promise<unknown>,
+    failure: string,
+    success: string,
+  ) => {
     setBusyId(id);
-    setError(null);
     try {
       await action();
+      toast.success(success);
       load();
     } catch (err) {
-      setError(apiErrorMessage(err, failure));
+      toast.error(apiErrorMessage(err, failure));
     } finally {
       setBusyId(null);
     }
@@ -149,6 +156,7 @@ export default function WalletPage() {
                           topUp.id,
                           () => walletApi.admin.approveTopUp(topUp.id),
                           'Could not approve this top-up.',
+                          'Top-up approved.',
                         )
                       }>
                       Approve
@@ -163,6 +171,7 @@ export default function WalletPage() {
                           topUp.id,
                           () => walletApi.admin.rejectTopUp(topUp.id, reason.trim()),
                           'Could not reject this top-up.',
+                          'Top-up rejected.',
                         );
                       }}>
                       Reject
@@ -210,6 +219,7 @@ export default function WalletPage() {
                           w.id,
                           () => walletApi.admin.approveWithdrawal(w.id),
                           'Could not approve this withdrawal.',
+                          'Withdrawal approved.',
                         )
                       }>
                       Approve
@@ -222,6 +232,7 @@ export default function WalletPage() {
                           w.id,
                           () => walletApi.admin.processWithdrawal(w.id),
                           'Could not mark this withdrawal as processing.',
+                          'Withdrawal marked as processing.',
                         )
                       }>
                       Processing
@@ -234,6 +245,7 @@ export default function WalletPage() {
                           w.id,
                           () => walletApi.admin.completeWithdrawal(w.id),
                           'Could not mark this withdrawal as paid.',
+                          'Withdrawal marked as paid.',
                         )
                       }>
                       Paid
@@ -248,6 +260,7 @@ export default function WalletPage() {
                           w.id,
                           () => walletApi.admin.rejectWithdrawal(w.id, reason.trim()),
                           'Could not reject this withdrawal.',
+                          'Withdrawal rejected.',
                         );
                       }}>
                       Reject

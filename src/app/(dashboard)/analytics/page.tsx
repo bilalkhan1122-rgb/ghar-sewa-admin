@@ -31,6 +31,7 @@ import {
   StatCard,
   Table,
 } from '@/components/ui';
+import { useToast } from '@/components/toast';
 
 const RANGES: { value: AnalyticsRange; label: string }[] = [
   { value: 'TODAY', label: 'Today' },
@@ -59,6 +60,7 @@ function hours(value: number | null | undefined): string {
  * which categories actually convert, and how many customers come back.
  */
 export default function AnalyticsPage() {
+  const toast = useToast();
   const [range, setRange] = useState<AnalyticsRange>('LAST_30_DAYS');
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [jobs, setJobs] = useState<JobsAnalytics | null>(null);
@@ -94,7 +96,6 @@ export default function AnalyticsPage() {
   /** The API returns the CSV body inline; the browser turns it into a file. */
   const exportCsv = async () => {
     setExporting(true);
-    setError(null);
     try {
       const file = await analyticsApi.exportCsv({ range });
       const url = URL.createObjectURL(new Blob([file.content], { type: file.mimeType }));
@@ -103,8 +104,9 @@ export default function AnalyticsPage() {
       link.download = file.filename;
       link.click();
       URL.revokeObjectURL(url);
+      toast.success(`Exported ${file.filename}.`);
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not export the CSV.'));
+      toast.error(apiErrorMessage(err, 'Could not export the CSV.'));
     } finally {
       setExporting(false);
     }

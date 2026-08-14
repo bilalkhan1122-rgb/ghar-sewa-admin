@@ -6,11 +6,11 @@ import { BellIcon } from '@/components/icons';
 import {
   Button,
   CardHeading,
-  ErrorNote,
   PageBody,
   PageHeader,
   inputClass,
 } from '@/components/ui';
+import { useToast } from '@/components/toast';
 
 /**
  * Push notifications, per the Figma "push-notifications" frame: a compose card
@@ -32,20 +32,19 @@ const MAX_MESSAGE = 280;
 type SentItem = { id: string; title: string; audience: string; recipients: number; at: string };
 
 export default function NotificationsPage() {
+  const toast = useToast();
   const [audience, setAudience] = useState<Audience>('all');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<SentItem[]>([]);
 
   const send = async () => {
     if (!title.trim() || !message.trim()) {
-      setError('Give the notification a title and a message.');
+      toast.error('Give the notification a title and a message.');
       return;
     }
     setBusy(true);
-    setError(null);
     try {
       const payload = {
         type: 'SYSTEM_ANNOUNCEMENT',
@@ -78,8 +77,11 @@ export default function NotificationsPage() {
       ]);
       setTitle('');
       setMessage('');
+      toast.success(
+        `Notification sent to ${res.recipients} recipient${res.recipients === 1 ? '' : 's'}.`,
+      );
     } catch (err) {
-      setError(apiErrorMessage(err, 'The notification could not be sent.'));
+      toast.error(apiErrorMessage(err, 'The notification could not be sent.'));
     } finally {
       setBusy(false);
     }
@@ -145,7 +147,6 @@ export default function NotificationsPage() {
               />
             </label>
 
-            <ErrorNote message={error} />
 
             <Button
               variant="dark"

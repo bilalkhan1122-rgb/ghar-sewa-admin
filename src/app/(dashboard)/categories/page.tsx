@@ -7,17 +7,20 @@ import {
   type ServiceCategory,
 } from '@/lib/api';
 import { Badge, Button, Card, Empty, ErrorNote, Field, FilterBar, inputClass, PageBody, PageHeader, selectClass, Table } from '@/components/ui';
+import { useToast } from '@/components/toast';
 
 type Filter = 'all' | 'active' | 'hidden';
 
 const emptyDraft = { name: '', icon: '', description: '' };
 
 export default function CategoriesPage() {
+  const toast = useToast();
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // `error` is only for a page that would not load; action outcomes toast.
   const [error, setError] = useState<string | null>(null);
 
   const [draft, setDraft] = useState(emptyDraft);
@@ -43,11 +46,10 @@ export default function CategoriesPage() {
   const create = async () => {
     const name = draft.name.trim();
     if (name.length < 2) {
-      setError('Enter a category name.');
+      toast.error('Enter a category name.');
       return;
     }
     setCreating(true);
-    setError(null);
     try {
       await categoriesApi.create({
         name,
@@ -57,9 +59,10 @@ export default function CategoriesPage() {
         displayOrder: categories.length + 1,
       });
       setDraft(emptyDraft);
+      toast.success('Category created.');
       load();
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not create the category.'));
+      toast.error(apiErrorMessage(err, 'Could not create the category.'));
     } finally {
       setCreating(false);
     }
@@ -68,7 +71,6 @@ export default function CategoriesPage() {
   const saveEdit = async () => {
     if (!editing) return;
     setBusyId(editing.id);
-    setError(null);
     try {
       await categoriesApi.update(editing.id, {
         name: editing.name.trim(),
@@ -76,9 +78,10 @@ export default function CategoriesPage() {
         description: editing.description?.trim() || undefined,
       });
       setEditing(null);
+      toast.success('Category saved.');
       load();
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not save the category.'));
+      toast.error(apiErrorMessage(err, 'Could not save the category.'));
     } finally {
       setBusyId(null);
     }
@@ -86,12 +89,12 @@ export default function CategoriesPage() {
 
   const toggle = async (category: ServiceCategory) => {
     setBusyId(category.id);
-    setError(null);
     try {
       await categoriesApi.toggleStatus(category.id);
+      toast.success(category.isActive ? 'Category hidden.' : 'Category shown.');
       load();
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not change visibility.'));
+      toast.error(apiErrorMessage(err, 'Could not change visibility.'));
     } finally {
       setBusyId(null);
     }
@@ -105,12 +108,12 @@ export default function CategoriesPage() {
     [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
 
     setCategories(ordered.map((c, i) => ({ ...c, displayOrder: i + 1 })));
-    setError(null);
     try {
       await categoriesApi.reorder(ordered.map((c) => c.id));
+      toast.success('New order saved.');
       load();
     } catch (err) {
-      setError(apiErrorMessage(err, 'Could not save the new order.'));
+      toast.error(apiErrorMessage(err, 'Could not save the new order.'));
       load();
     }
   };

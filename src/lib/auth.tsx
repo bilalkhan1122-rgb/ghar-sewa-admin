@@ -24,6 +24,8 @@ type AuthState = {
   user: User | null;
   /** Null until the access call resolves, and for a signed-out visitor. */
   access: AccessMap | null;
+  /** False until the access call settles, so pages can wait instead of flashing. */
+  accessLoaded: boolean;
   isSuperAdmin: boolean;
   /** True while access is still loading, so the nav does not flash empty. */
   can: (module: AdminModuleKey, level?: 'view' | 'full') => boolean;
@@ -56,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [access, setAccess] = useState<AccessMap | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [accessLoaded, setAccessLoaded] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -97,9 +100,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsSuperAdmin(me.isSuperAdmin);
       })
       .catch(() => {
-        // Never signs anyone out: null access keeps the nav in its loading
-        // shape rather than falsely showing zero modules.
+        // Deliberately fails open: if this one endpoint is down, an admin keeps
+        // the full nav rather than being locked out of the whole dashboard. The
+        // server still enforces every permission, so nothing is actually
+        // reachable that should not be.
         if (!cancelled) setAccess(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAccessLoaded(true);
       });
     return () => {
       cancelled = true;
@@ -128,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setAccess(null);
       setIsSuperAdmin(false);
+      setAccessLoaded(false);
       setStatus('guest');
       router.replace('/login');
     }
@@ -149,8 +158,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ status, user, access, isSuperAdmin, can, refreshAccess, login, logout }),
-    [status, user, access, isSuperAdmin, can, refreshAccess, login, logout],
+    () => ({ status, user, access, accessLoaded, isSuperAdmin, can, refreshAccess, login, logout }),
+    [status, user, access, accessLoaded, isSuperAdmin, can, refreshAccess, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

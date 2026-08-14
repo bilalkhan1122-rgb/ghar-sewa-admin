@@ -46,17 +46,44 @@ const NAV: NavItem[] = [
   { href: '/analytics', label: 'Analytics', module: 'analytics' },
 ];
 
+/**
+ * Which module a path belongs to, so one guard covers every page instead of
+ * each one repeating the check. Longest matching nav href wins, which puts
+ * /settings/admins under the same module as /settings and /users/[id] under
+ * /users. Paths outside the nav (/profile) are unrestricted by design — every
+ * admin can reach their own account.
+ */
+function moduleForPath(pathname: string): AdminModuleKey | null {
+  if (pathname === '/') return 'overview';
+  const match = NAV.filter(
+    (item) =>
+      item.href !== '/' &&
+      (pathname === item.href || pathname.startsWith(`${item.href}/`)),
+  ).sort((a, b) => b.href.length - a.href.length)[0];
+  return match?.module ?? null;
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { status, user, logout, can } = useAuth();
+  const { status, user, logout, can, accessLoaded } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [widgets, setWidgets] = useState<DashboardWidgets | null>(null);
+  const requiredModule = moduleForPath(pathname);
 
   // Auth lives in httpOnly cookies on the API's domain, so this server cannot
   // read them — the guard has to run in the browser rather than in middleware.
   useEffect(() => {
     if (status === 'guest') router.replace('/login');
   }, [status, router]);
+
+  // An admin without overview access would otherwise land on a wall of "no
+  // access" the moment they sign in. Send them to the first section they can
+  // actually open instead.
+  useEffect(() => {
+    if (!accessLoaded || pathname !== '/' || can('overview')) return;
+    const first = NAV.find((item) => item.href !== '/' && can(item.module));
+    if (first) router.replace(first.href);
+  }, [accessLoaded, pathname, can, router]);
 
   // Queue counts for the nav. Best-effort: a failure here must never block the
   // page, so it silently leaves the badges off.
@@ -137,7 +164,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      <main className="flex-1">{children}</main>
+      <main className="flex-1">
+        {!accessLoaded ? (
+          <p className="p-6 text-sm text-fg-subtle">Loading…</p>
+        ) : requiredModule && !can(requiredModule) ? (
+          <NoAccess />
+        ) : (
+          children
+        )}
+      </main>
+    </div>
+  );
+}
+
+/** Shown in place of a page whose module has not been granted. */
+function NoAccess() {
+  return (
+    <div className="mx-auto max-w-md px-6 py-20 text-center">
+      <p className="text-base font-semibold text-fg">You do not have access to this section</p>
+      <p className="mt-2 text-sm text-fg-muted">
+        Your admin account has not been granted this module. Ask a super admin if you need it.
+      </p>
+      <Link
+        href="/"
+        className="mt-5 inline-block cursor-pointer rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-fg transition hover:bg-brand-hover">
+        Back to overview
+      </Link>
     </div>
   );
 }

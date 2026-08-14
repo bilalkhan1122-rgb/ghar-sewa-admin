@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth';
 import {
   adminApi,
   apiErrorMessage,
@@ -53,6 +54,7 @@ function lastSevenDays(jobs: AdminJob[]): DayBar[] {
 }
 
 export default function OverviewPage() {
+  const { can } = useAuth();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [jobs, setJobs] = useState<AdminJob[]>([]);
   const [providers, setProviders] = useState<ProvidersReport | null>(null);
@@ -178,11 +180,13 @@ export default function OverviewPage() {
               title="Recent Jobs"
               subtitle="Latest service bookings across active cities"
             />
-            <Link
-              href="/jobs"
-              className="cursor-pointer text-sm font-medium text-brand hover:underline">
-              View all
-            </Link>
+            {can('jobs') && (
+              <Link
+                href="/jobs"
+                className="cursor-pointer text-sm font-medium text-brand hover:underline">
+                View all
+              </Link>
+            )}
           </div>
 
           {recent.length === 0 ? (

@@ -13,6 +13,7 @@ export { authApi, type LoginPayload } from './auth';
 export * from './admin';
 export * from './categories';
 export * from './admin-users';
+export * from './admin-accounts';
 export * from './jobs';
 export * from './reports';
 export * from './analytics';

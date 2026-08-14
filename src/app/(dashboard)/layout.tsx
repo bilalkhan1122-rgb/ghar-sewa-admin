@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
-import { adminApi, type DashboardWidgets } from '@/lib/api';
+import { adminApi, type AdminModuleKey, type DashboardWidgets } from '@/lib/api';
 import { BellIcon, HouseIcon, SearchIcon, SignOutIcon } from '@/components/icons';
 
 /**
@@ -17,29 +17,37 @@ type NavItem = {
   label: string;
   /** Which queue this item owns, so the nav can flag what needs attention. */
   count?: (w: DashboardWidgets) => number;
+  /** Hidden unless the signed-in admin can view this module. */
+  module: AdminModuleKey;
 };
 
 const NAV: NavItem[] = [
-  { href: '/', label: 'Overview' },
-  { href: '/providers', label: 'Providers' },
-  { href: '/users', label: 'Customers' },
-  { href: '/jobs', label: 'Jobs' },
-  { href: '/categories', label: 'Categories' },
-  { href: '/verifications', label: 'Verifications', count: (w) => w.pendingVerifications },
-  { href: '/disputes', label: 'Disputes', count: (w) => w.openDisputes },
+  { href: '/', label: 'Overview', module: 'overview' },
+  { href: '/providers', label: 'Providers', module: 'providers' },
+  { href: '/users', label: 'Customers', module: 'users' },
+  { href: '/jobs', label: 'Jobs', module: 'jobs' },
+  { href: '/categories', label: 'Categories', module: 'categories' },
+  {
+    href: '/verifications',
+    label: 'Verifications',
+    count: (w) => w.pendingVerifications,
+    module: 'verifications',
+  },
+  { href: '/disputes', label: 'Disputes', count: (w) => w.openDisputes, module: 'disputes' },
   {
     href: '/wallet',
     label: 'Wallet',
     count: (w) => w.pendingTopUps + w.pendingWithdrawals,
+    module: 'wallet',
   },
-  { href: '/reports', label: 'Reports' },
-  { href: '/notifications', label: 'Notifications' },
-  { href: '/settings', label: 'Settings' },
-  { href: '/analytics', label: 'Analytics' },
+  { href: '/reports', label: 'Reports', module: 'reports' },
+  { href: '/notifications', label: 'Notifications', module: 'notifications' },
+  { href: '/settings', label: 'Settings', module: 'admins' },
+  { href: '/analytics', label: 'Analytics', module: 'analytics' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { status, user, logout } = useAuth();
+  const { status, user, logout, can } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [widgets, setWidgets] = useState<DashboardWidgets | null>(null);
@@ -86,7 +94,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Link>
 
           <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
-            {NAV.map((item) => {
+            {NAV.filter((item) => can(item.module)).map((item) => {
               const active = pathname === item.href;
               const count = widgets && item.count ? item.count(widgets) : 0;
               return (
@@ -112,11 +120,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex shrink-0 items-center gap-3">
             <SearchIcon className="h-5 w-5 text-fg-on-dark-muted" />
             <BellIcon className="h-5 w-5 text-fg-on-dark-muted" />
-            <span
-              title={user?.email}
-              className="grid h-9 w-9 place-items-center rounded-full bg-header-card text-xs font-semibold text-fg-on-dark">
+            <Link
+              href="/profile"
+              title={`${user?.email ?? ''} — my profile`}
+              aria-label="My profile"
+              className="grid h-9 w-9 cursor-pointer place-items-center rounded-full bg-header-card text-xs font-semibold text-fg-on-dark transition hover:bg-header-nav-active">
               {(user?.fullName ?? 'A').slice(0, 1).toUpperCase()}
-            </span>
+            </Link>
             <button
               onClick={logout}
               aria-label="Sign out"

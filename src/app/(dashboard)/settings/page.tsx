@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { CardHeading, PageBody, PageHeader } from '@/components/ui';
 
@@ -41,6 +42,20 @@ export default function SettingsPage() {
       />
 
       <PageBody>
+        <Link
+          href="/settings/admins"
+          className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-line bg-surface px-4 py-3 shadow-card transition hover:bg-surface-muted">
+          <span>
+            <span className="block text-sm font-medium">Admin accounts</span>
+            <span className="block text-xs text-fg-subtle">
+              Create dashboard users and choose which modules each one can reach
+            </span>
+          </span>
+          <span aria-hidden="true" className="text-fg-subtle">
+            &rarr;
+          </span>
+        </Link>
+
         <p className="rounded-xl border border-warn-line bg-warn-soft px-4 py-3 text-sm text-warn-fg">
           These platform rules are enforced by the backend and have no settings endpoint yet, so
           they are read-only here. Adding <code>GET/PATCH /admin/settings</code> would make this

@@ -36,9 +36,21 @@ export default function WalletPage() {
   const load = useCallback(() => {
     Promise.all([
       walletApi.admin.topUps(1, 20, 'PENDING').then((r) => setTopUps(r.data as TopUpRow[])),
-      walletApi.admin
-        .withdrawals(1, 20, 'PENDING')
-        .then((r) => setWithdrawals(r.data as WithdrawalRow[])),
+      // Every in-flight status, not just PENDING. A payout moves
+      // approve → process → complete, so listing only PENDING made an approved
+      // request vanish from the queue with two steps still to go — and the
+      // provider's money stayed on hold with no way to release it.
+      Promise.all(
+        (['PENDING', 'APPROVED', 'PROCESSING'] as const).map((status) =>
+          walletApi.admin.withdrawals(1, 20, status),
+        ),
+      ).then((pages) =>
+        setWithdrawals(
+          pages
+            .flatMap((r) => r.data as WithdrawalRow[])
+            .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+        ),
+      ),
     ])
       .catch((err) => setError(apiErrorMessage(err, 'Could not load wallet requests.')))
       .finally(() => setLoading(false));
@@ -186,10 +198,10 @@ export default function WalletPage() {
 
       <section className="space-y-3">
         <SectionLabel>
-          Pending withdrawals ({withdrawals.length})
+          Withdrawals in progress ({withdrawals.length})
         </SectionLabel>
         {withdrawals.length === 0 && !loading ? (
-          <Empty message="No withdrawal requests waiting." />
+          <Empty message="No withdrawals in progress." />
         ) : (
           <Table head={['Provider', 'Amount', 'Account', 'Status', 'Actions']}>
             {withdrawals.map((w) => (
@@ -210,61 +222,71 @@ export default function WalletPage() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
-                    {/* Payouts move through approve → process → complete. */}
-                    <Button
-                      variant="success"
-                      disabled={busyId === w.id}
-                      onClick={() =>
-                        run(
-                          w.id,
-                          () => walletApi.admin.approveWithdrawal(w.id),
-                          'Could not approve this withdrawal.',
-                          'Withdrawal approved.',
-                        )
-                      }>
-                      Approve
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      disabled={busyId === w.id}
-                      onClick={() =>
-                        run(
-                          w.id,
-                          () => walletApi.admin.processWithdrawal(w.id),
-                          'Could not mark this withdrawal as processing.',
-                          'Withdrawal marked as processing.',
-                        )
-                      }>
-                      Processing
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      disabled={busyId === w.id}
-                      onClick={() =>
-                        run(
-                          w.id,
-                          () => walletApi.admin.completeWithdrawal(w.id),
-                          'Could not mark this withdrawal as paid.',
-                          'Withdrawal marked as paid.',
-                        )
-                      }>
-                      Paid
-                    </Button>
-                    <Button
-                      variant="danger"
-                      disabled={busyId === w.id}
-                      onClick={() => {
-                        const reason = window.prompt('Reason for rejecting this withdrawal?');
-                        if (!reason?.trim()) return;
-                        run(
-                          w.id,
-                          () => walletApi.admin.rejectWithdrawal(w.id, reason.trim()),
-                          'Could not reject this withdrawal.',
-                          'Withdrawal rejected.',
-                        );
-                      }}>
-                      Reject
-                    </Button>
+                    {/* Payouts move through approve → process → complete, and
+                        the API rejects anything out of order. Only the step
+                        that is actually valid right now is offered. */}
+                    {w.status === 'PENDING' && (
+                      <Button
+                        variant="success"
+                        disabled={busyId === w.id}
+                        onClick={() =>
+                          run(
+                            w.id,
+                            () => walletApi.admin.approveWithdrawal(w.id),
+                            'Could not approve this withdrawal.',
+                            'Withdrawal approved.',
+                          )
+                        }>
+                        Approve
+                      </Button>
+                    )}
+                    {w.status === 'APPROVED' && (
+                      <Button
+                        variant="secondary"
+                        disabled={busyId === w.id}
+                        onClick={() =>
+                          run(
+                            w.id,
+                            () => walletApi.admin.processWithdrawal(w.id),
+                            'Could not mark this withdrawal as processing.',
+                            'Withdrawal marked as processing.',
+                          )
+                        }>
+                        Mark as processing
+                      </Button>
+                    )}
+                    {w.status === 'PROCESSING' && (
+                      <Button
+                        variant="approve"
+                        disabled={busyId === w.id}
+                        onClick={() =>
+                          run(
+                            w.id,
+                            () => walletApi.admin.completeWithdrawal(w.id),
+                            'Could not mark this withdrawal as paid.',
+                            'Withdrawal marked as paid — funds released.',
+                          )
+                        }>
+                        Mark as paid
+                      </Button>
+                    )}
+                    {w.status !== 'PROCESSING' && (
+                      <Button
+                        variant="danger"
+                        disabled={busyId === w.id}
+                        onClick={() => {
+                          const reason = window.prompt('Reason for rejecting this withdrawal?');
+                          if (!reason?.trim()) return;
+                          run(
+                            w.id,
+                            () => walletApi.admin.rejectWithdrawal(w.id, reason.trim()),
+                            'Could not reject this withdrawal.',
+                            'Withdrawal rejected.',
+                          );
+                        }}>
+                        Reject
+                      </Button>
+                    )}
                   </div>
                 </td>
               </tr>

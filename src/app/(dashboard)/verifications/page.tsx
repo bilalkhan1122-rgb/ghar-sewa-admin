@@ -196,7 +196,7 @@ export default function VerificationsPage() {
                 </h3>
                 <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
                   {[
-                    { label: 'Face Selfie', path: selected.facePhoto },
+                    { label: 'Selfie with CNIC', path: selected.facePhoto },
                     { label: 'CNIC Front', path: selected.cnicFrontImage },
                     { label: 'CNIC Back', path: selected.cnicBackImage },
                   ].map((doc) => (

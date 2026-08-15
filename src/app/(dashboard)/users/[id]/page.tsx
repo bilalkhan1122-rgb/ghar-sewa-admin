@@ -341,7 +341,7 @@ export default function UserDetailPage() {
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {(
               [
-                { label: 'Face photo', path: request.facePhoto, document: 'facePhoto' },
+                { label: 'Selfie with CNIC', path: request.facePhoto, document: 'facePhoto' },
                 { label: 'CNIC front', path: request.cnicFrontImage, document: 'cnicFront' },
                 { label: 'CNIC back', path: request.cnicBackImage, document: 'cnicBack' },
               ] as const

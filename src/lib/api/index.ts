@@ -20,4 +20,5 @@ export * from './analytics';
 export * from './verification';
 export * from './disputes';
 export * from './wallet';
+export * from './settings';
 export { usersApi, type UpdateUserPayload } from './users';

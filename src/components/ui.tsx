@@ -389,18 +389,24 @@ export function CheckboxRow({
   label,
   checked,
   onChange,
+  disabled = false,
 }: {
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 text-sm text-fg">
+    <label
+      className={`flex items-center gap-2.5 text-sm ${
+        disabled ? 'cursor-not-allowed text-fg-subtle' : 'cursor-pointer text-fg'
+      }`}>
       <input
         type="checkbox"
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 cursor-pointer accent-brand"
+        className={`h-4 w-4 accent-brand ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
       />
       {label}
     </label>

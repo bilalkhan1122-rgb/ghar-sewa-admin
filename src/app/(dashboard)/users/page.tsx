@@ -46,6 +46,10 @@ export default function CustomersPage() {
 
   const [showActive, setShowActive] = useState(true);
   const [showBanned, setShowBanned] = useState(false);
+  // Soft-deleted users are a separate request, not a client-side slice: the
+  // endpoint omits them unless `deleted: 'true'`, which then returns *only*
+  // them. So this checkbox refetches and takes over the other two.
+  const [showDeleted, setShowDeleted] = useState(false);
   const [sort, setSort] = useState<SortKey>('spend');
   const [city, setCity] = useState('');
   const [search, setSearch] = useState('');
@@ -58,6 +62,7 @@ export default function CustomersPage() {
           page: nextPage,
           limit: 24,
           role: 'CUSTOMER',
+          ...(showDeleted ? { deleted: 'true' } : {}),
           ...(search.trim() ? { search: search.trim() } : {}),
         })
         .then((res) => {
@@ -70,7 +75,8 @@ export default function CustomersPage() {
         .catch((err) => setError(apiErrorMessage(err, 'Could not load customers.')))
         .finally(() => setLoading(false));
     },
-    // `search` is read at call time; `applied` is the explicit trigger.
+    // `search` and `showDeleted` are read at call time; `applied` is the
+    // explicit trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [applied],
   );
@@ -85,12 +91,15 @@ export default function CustomersPage() {
   );
 
   // Status and city narrow the loaded page client-side — the API takes a single
-  // status, which cannot express "active OR banned".
+  // status, which cannot express "active OR banned". In deleted mode every row
+  // is deleted by definition, so only the city filter still applies.
   const visible = useMemo(() => {
     const list = customers.filter((c) => {
-      const banned = c.status === 'BANNED' || c.status === 'SUSPENDED' || !!c.deletedAt;
-      if (banned && !showBanned) return false;
-      if (!banned && !showActive) return false;
+      if (!showDeleted) {
+        const banned = c.status === 'BANNED' || c.status === 'SUSPENDED' || !!c.deletedAt;
+        if (banned && !showBanned) return false;
+        if (!banned && !showActive) return false;
+      }
       return !city || c.city?.name === city;
     });
     return [...list].sort((a, b) => {
@@ -99,11 +108,19 @@ export default function CustomersPage() {
         return toNumber(b.wallet?.balance) - toNumber(a.wallet?.balance);
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [customers, showActive, showBanned, city, sort]);
+  }, [customers, showActive, showBanned, showDeleted, city, sort]);
+
+  /** Unlike the other two, this one changes the query — so it must refetch. */
+  const toggleDeleted = (next: boolean) => {
+    setShowDeleted(next);
+    setLoading(true);
+    setApplied((n) => n + 1);
+  };
 
   const resetAll = () => {
     setShowActive(true);
     setShowBanned(false);
+    setShowDeleted(false);
     setSort('spend');
     setCity('');
     setSearch('');
@@ -131,8 +148,28 @@ export default function CustomersPage() {
             </div>
 
             <FilterSection label="Account status">
-              <CheckboxRow label="Active accounts" checked={showActive} onChange={setShowActive} />
-              <CheckboxRow label="Banned accounts" checked={showBanned} onChange={setShowBanned} />
+              <CheckboxRow
+                label="Active accounts"
+                checked={showActive}
+                onChange={setShowActive}
+                disabled={showDeleted}
+              />
+              <CheckboxRow
+                label="Banned accounts"
+                checked={showBanned}
+                onChange={setShowBanned}
+                disabled={showDeleted}
+              />
+              <CheckboxRow
+                label="Deleted accounts"
+                checked={showDeleted}
+                onChange={toggleDeleted}
+              />
+              {showDeleted && (
+                <p className="pt-1 text-xs text-fg-subtle">
+                  Showing deleted accounts only. Untick to return to active and banned customers.
+                </p>
+              )}
             </FilterSection>
 
             <FilterSection label="Sort by activity">
@@ -167,7 +204,8 @@ export default function CustomersPage() {
           <div className="min-w-0 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-semibold text-fg">
-                Showing {visible.length} of {total} registered customers
+                Showing {visible.length} of {total}{' '}
+                {showDeleted ? 'deleted customers' : 'registered customers'}
               </p>
               <form
                 onSubmit={(e) => {
@@ -189,7 +227,13 @@ export default function CustomersPage() {
             <ErrorNote message={error} />
             {loading && <p className="text-sm text-fg-subtle">Loading…</p>}
             {!loading && visible.length === 0 && (
-              <Empty message="No customers match these filters." />
+              <Empty
+                message={
+                  showDeleted
+                    ? 'No deleted customer accounts.'
+                    : 'No customers match these filters.'
+                }
+              />
             )}
 
             {!loading && visible.length > 0 && (

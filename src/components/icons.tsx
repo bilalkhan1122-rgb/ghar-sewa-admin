@@ -140,6 +140,25 @@ export function BellIcon(p: IconProps) {
   );
 }
 
+export function MenuIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M4 6h16" />
+      <path d="M4 12h16" />
+      <path d="M4 18h16" />
+    </Svg>
+  );
+}
+
+export function CloseIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="m6 6 12 12" />
+      <path d="m18 6-12 12" />
+    </Svg>
+  );
+}
+
 export function BriefcaseIcon(p: IconProps) {
   return (
     <Svg {...p}>

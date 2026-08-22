@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import {
   adminUsersApi,
   apiErrorMessage,
@@ -18,7 +18,6 @@ import { useToast } from '@/components/toast';
 
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const toast = useToast();
 
   const [user, setUser] = useState<AdminUserDetail | null>(null);
@@ -479,8 +478,13 @@ export default function UserDetailPage() {
             Admin accounts cannot be suspended or deleted.
           </p>
         )}
+        {/* Everything on this page is fetched in the browser, so `router.refresh()`
+            would re-run nothing — the two loaders have to be re-triggered. */}
         <button
-          onClick={() => router.refresh()}
+          onClick={() => {
+            load();
+            setRequestReloadKey((n) => n + 1);
+          }}
           className="mt-3 cursor-pointer text-sm text-brand hover:underline">
           Refresh
         </button>

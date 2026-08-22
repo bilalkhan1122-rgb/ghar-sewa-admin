@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { StarIcon } from '@/components/icons';
 
 /** Shared control styling — every text field and select in the app uses these. */
@@ -221,11 +222,13 @@ export function StatCard({
 
   if (href) {
     return (
-      <a
+      // `Link`, not a bare anchor: a plain href reloads the whole app, which
+      // re-runs the session restore and throws away every page's loaded state.
+      <Link
         href={href}
         className="group cursor-pointer rounded-2xl border border-line bg-surface p-4 shadow-card transition hover:border-line-strong hover:shadow-md">
         {body}
-      </a>
+      </Link>
     );
   }
   return <div className="rounded-2xl border border-line bg-surface p-4 shadow-card">{body}</div>;

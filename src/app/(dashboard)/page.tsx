@@ -30,6 +30,17 @@ import {
 type DayBar = { label: string; value: number };
 
 /**
+ * `YYYY-MM-DD` in the viewer's own timezone. `toISOString()` would give the UTC
+ * day, which in Pakistan (UTC+5) is still yesterday until 5am — jobs posted
+ * early in the morning landed under the wrong weekday label.
+ */
+function localDayKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate(),
+  ).padStart(2, '0')}`;
+}
+
+/**
  * Buckets the fetched jobs into the last seven days. Derived client-side
  * because the API exposes job totals but no daily series — see the note in the
  * card's subtitle if this ever needs to cover more than one page of jobs.
@@ -37,7 +48,7 @@ type DayBar = { label: string; value: number };
 function lastSevenDays(jobs: AdminJob[]): DayBar[] {
   const counts = new Map<string, number>();
   for (const job of jobs) {
-    const key = job.createdAt.slice(0, 10);
+    const key = localDayKey(new Date(job.createdAt));
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
@@ -47,7 +58,7 @@ function lastSevenDays(jobs: AdminJob[]): DayBar[] {
     d.setDate(d.getDate() - i);
     days.push({
       label: d.toLocaleDateString('en-GB', { weekday: 'short' }),
-      value: counts.get(d.toISOString().slice(0, 10)) ?? 0,
+      value: counts.get(localDayKey(d)) ?? 0,
     });
   }
   return days;

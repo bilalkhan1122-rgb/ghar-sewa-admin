@@ -18,6 +18,9 @@ export default function CategoriesPage() {
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
+  // `search` is a server-side filter, so it is debounced before it becomes the
+  // one the loader reads — typing "electrician" is one request, not eleven.
+  const [appliedSearch, setAppliedSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   // `error` is only for a page that would not load; action outcomes toast.
@@ -27,13 +30,21 @@ export default function CategoriesPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<ServiceCategory | null>(null);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setAppliedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const load = useCallback(() => {
     categoriesApi
-      .list({ limit: 100, search: search || undefined })
-      .then((res) => setCategories(res.data))
+      .list({ limit: 100, search: appliedSearch || undefined })
+      .then((res) => {
+        setError(null);
+        setCategories(res.data);
+      })
       .catch((err) => setError(apiErrorMessage(err, 'Could not load categories.')))
       .finally(() => setLoading(false));
-  }, [search]);
+  }, [appliedSearch]);
 
   useEffect(() => {
     load();

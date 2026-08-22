@@ -235,6 +235,7 @@ function ResolvePanel({
   const [resolution, setResolution] = useState<DisputeResolution>('FULL_REFUND');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [noteMissing, setNoteMissing] = useState(false);
 
   const needsAmount = resolution === 'FULL_REFUND' || resolution === 'PARTIAL_REFUND';
 
@@ -279,9 +280,13 @@ function ResolvePanel({
           </span>
           <input
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            onChange={(e) => {
+              setNote(e.target.value);
+              setNoteMissing(false);
+            }}
+            aria-invalid={noteMissing}
             placeholder="Shared with both parties"
-            className={inputClass}
+            className={`${inputClass} ${noteMissing ? 'border-bad-line ring-1 ring-bad-line' : ''}`}
           />
         </label>
       </div>
@@ -299,11 +304,17 @@ function ResolvePanel({
           onClick={() => onStatus('UNDER_REVIEW', note)}>
           Mark under investigation
         </Button>
-        <Button variant="danger" disabled={busy} onClick={() => onReject(note)}>
+        {/* The note is the rejection reason the API requires and the party who
+            raised the dispute is shown — caught here rather than bouncing off
+            a server validation error with the reason still untyped. */}
+        <Button
+          variant="danger"
+          disabled={busy}
+          onClick={() => (note.trim() ? onReject(note.trim()) : setNoteMissing(true))}>
           Reject dispute
         </Button>
       </div>
-      <p className="text-xs text-fg-subtle">
+      <p className={`text-xs ${noteMissing ? 'font-medium text-bad-fg' : 'text-fg-subtle'}`}>
         Rejecting requires a note — it is sent to the party who raised the dispute.
       </p>
     </div>

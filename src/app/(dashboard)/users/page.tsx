@@ -244,7 +244,14 @@ export default function CustomersPage() {
               </div>
             )}
 
-            <Pagination page={page} totalPages={totalPages} onChange={load} />
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onChange={(p) => {
+                setLoading(true);
+                load(p);
+              }}
+            />
           </div>
         </div>
       </PageBody>

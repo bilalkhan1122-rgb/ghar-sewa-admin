@@ -102,8 +102,12 @@ export default function AnalyticsPage() {
       const link = document.createElement('a');
       link.href = url;
       link.download = file.filename;
+      // Firefox ignores a click on a detached anchor, and revoking the object
+      // URL in the same tick cancels the download Safari has only just started.
+      document.body.appendChild(link);
       link.click();
-      URL.revokeObjectURL(url);
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
       toast.success(`Exported ${file.filename}.`);
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Could not export the CSV.'));

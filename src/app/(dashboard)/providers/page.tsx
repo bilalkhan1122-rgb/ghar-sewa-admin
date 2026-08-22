@@ -8,7 +8,6 @@ import {
   fileUrl,
   toNumber,
   type AdminUserListItem,
-  type VerificationStatus,
 } from '@/lib/api';
 import {
   Badge,
@@ -40,10 +39,21 @@ import {
  */
 type SortKey = 'rating' | 'recent' | 'city';
 
-const STATUS_FILTERS: { key: string; label: string; verification: VerificationStatus }[] = [
-  { key: 'active', label: 'Active', verification: 'APPROVED' },
-  { key: 'pending', label: 'Pending', verification: 'PENDING' },
-  { key: 'banned', label: 'Banned', verification: 'BANNED' },
+/**
+ * A provider can be shut out two different ways: their verification is banned,
+ * or the account itself is suspended/banned by an admin. The rail's "Banned"
+ * row means both — matching only `verificationStatus` hid every provider who
+ * had been suspended from the user side.
+ */
+const STATUS_FILTERS: { key: string; label: string; match: (p: AdminUserListItem) => boolean }[] = [
+  { key: 'active', label: 'Active', match: (p) => p.verificationStatus === 'APPROVED' },
+  { key: 'pending', label: 'Pending', match: (p) => p.verificationStatus === 'PENDING' },
+  {
+    key: 'banned',
+    label: 'Banned',
+    match: (p) =>
+      p.verificationStatus === 'BANNED' || p.status === 'BANNED' || p.status === 'SUSPENDED',
+  },
 ];
 
 export default function ProvidersPage() {
@@ -88,10 +98,10 @@ export default function ProvidersPage() {
   // Status and city narrow the loaded page client-side; the API filters by a
   // single verificationStatus only, which cannot express "active OR pending".
   const visible = useMemo(() => {
-    const wanted = STATUS_FILTERS.filter((s) => checked[s.key]).map((s) => s.verification);
+    const wanted = STATUS_FILTERS.filter((s) => checked[s.key]);
     const list = providers.filter(
       (p) =>
-        (wanted.length === 0 || wanted.includes(p.verificationStatus)) &&
+        (wanted.length === 0 || wanted.some((s) => s.match(p))) &&
         (!city || p.city?.name === city),
     );
     return [...list].sort((a, b) => {
@@ -208,7 +218,14 @@ export default function ProvidersPage() {
               </Table>
             )}
 
-            <Pagination page={page} totalPages={totalPages} onChange={load} />
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onChange={(p) => {
+                setLoading(true);
+                load(p);
+              }}
+            />
           </div>
         </div>
       </PageBody>

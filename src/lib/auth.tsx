@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -17,7 +18,9 @@ import {
   type LoginPayload,
   type User,
   authApi,
+  setSessionExpiredHandler,
 } from '@/lib/api';
+import { useToast } from '@/components/toast';
 
 type AuthState = {
   status: 'loading' | 'authenticated' | 'guest';
@@ -39,17 +42,16 @@ const AuthContext = createContext<AuthState | null>(null);
 /** Only admins belong in this dashboard. */
 export const NOT_AN_ADMIN_MESSAGE = 'This account does not have admin access.';
 
-/** Restore a session from the httpOnly cookies the API set, if still valid. */
+/**
+ * Restore a session from the httpOnly cookies the API set, if still valid.
+ * A 401 here is already refreshed-and-replayed inside the API client, so
+ * reaching the catch means there is genuinely no session to restore.
+ */
 async function restore(): Promise<User | null> {
   try {
     return await authApi.me();
   } catch {
-    try {
-      await authApi.refresh();
-      return await authApi.me();
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 
@@ -60,6 +62,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [accessLoaded, setAccessLoaded] = useState(false);
   const router = useRouter();
+  const toast = useToast();
+  // A dead session usually produces a burst of 401s — one per in-flight
+  // request. Only the first should sign anyone out.
+  const expiredRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,11 +83,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  /** Drops every trace of the signed-in admin and sends them to sign in again. */
+  const endSession = useCallback(() => {
+    setUser(null);
+    setAccess(null);
+    setIsSuperAdmin(false);
+    setAccessLoaded(false);
+    setStatus('guest');
+    router.replace('/login');
+  }, [router]);
+
+  // The API client cannot navigate or clear React state, so it hands an
+  // unrecoverable 401 back here. Without this an expired session left the
+  // dashboard on screen with every request failing "unauthorised".
+  //
+  // Re-registered whenever `status` changes so the handler always sees the
+  // current one: a 401 before sign-in is just a signed-out visitor, not a
+  // session that died, and must not toast at them on the login screen.
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      if (expiredRef.current || status !== 'authenticated') return;
+      expiredRef.current = true;
+      endSession();
+      toast.error('Your session has expired. Please sign in again.');
+    });
+    return () => setSessionExpiredHandler(null);
+  }, [status, endSession, toast]);
+
   const refreshAccess = useCallback(async () => {
     try {
-      const me = await adminAccountsApi.me();
-      setAccess(me.access);
-      setIsSuperAdmin(me.isSuperAdmin);
+      // The header renders the name and initial, so the account itself is
+      // re-read too — a profile edit has to show up there without a reload.
+      const [me, account] = await Promise.all([authApi.me(), adminAccountsApi.me()]);
+      setUser(me);
+      setAccess(account.access);
+      setIsSuperAdmin(account.isSuperAdmin);
     } catch {
       // A failure here must not sign anyone out. Leaving access null keeps the
       // nav in its loading shape rather than falsely showing zero modules.
@@ -122,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await authApi.logout().catch(() => undefined);
         throw new Error(NOT_AN_ADMIN_MESSAGE);
       }
+      expiredRef.current = false;
       setUser(result.user);
       setStatus('authenticated');
       router.replace('/');
@@ -133,14 +170,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await authApi.logout();
     } finally {
-      setUser(null);
-      setAccess(null);
-      setIsSuperAdmin(false);
-      setAccessLoaded(false);
-      setStatus('guest');
-      router.replace('/login');
+      expiredRef.current = false;
+      endSession();
     }
-  }, [router]);
+  }, [endSession]);
 
   /**
    * Permission check for the UI. Returns true while access is still loading so

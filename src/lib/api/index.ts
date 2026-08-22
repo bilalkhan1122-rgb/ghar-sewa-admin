@@ -7,6 +7,7 @@ export {
   fileUrl,
   toNumber,
   qs,
+  setSessionExpiredHandler,
 } from './client';
 export * from './types';
 export { authApi, type LoginPayload } from './auth';

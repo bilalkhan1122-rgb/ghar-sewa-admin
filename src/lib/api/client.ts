@@ -77,6 +77,30 @@ const AUTH_ENDPOINTS_WITHOUT_REFRESH = new Set([
   '/auth/logout',
 ]);
 
+/**
+ * Endpoints where a 401 is an ordinary answer rather than a session that just
+ * died: a wrong password on sign-in, and the probe the app runs on boot to see
+ * whether there is a session at all. Everything else reaching a 401 means the
+ * admin was signed in a moment ago and is not any more.
+ */
+const ENDPOINTS_WITHOUT_SESSION_EXPIRY = new Set([
+  ...AUTH_ENDPOINTS_WITHOUT_REFRESH,
+  '/auth/me',
+]);
+
+let sessionExpiredHandler: (() => void) | null = null;
+
+/**
+ * Registered by AuthProvider so an expired session signs the admin out.
+ *
+ * Without it a 401 only ever surfaced as "your session has expired" text on
+ * whichever page happened to make the call, leaving a signed-out admin sitting
+ * on a dashboard where every subsequent action failed the same way.
+ */
+export function setSessionExpiredHandler(handler: (() => void) | null): void {
+  sessionExpiredHandler = handler;
+}
+
 function doFetch(path: string, init: RequestInit, isFormData: boolean): Promise<Response> {
   return fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -157,6 +181,11 @@ async function request<T>(path: string, init: RequestInit = {}, isFormData = fal
     if (refreshed) {
       res = await doFetch(path, init, isFormData);
     }
+  }
+
+  // Still unauthorised after the refresh attempt: the session is gone for good.
+  if (res.status === 401 && !ENDPOINTS_WITHOUT_SESSION_EXPIRY.has(path)) {
+    sessionExpiredHandler?.();
   }
 
   const isJson = res.headers.get('content-type')?.includes('application/json');
